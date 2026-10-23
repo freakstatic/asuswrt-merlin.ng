@@ -1955,7 +1955,7 @@ function toggle_fw_check(state) {
                             function () {
 								const policyStatus = PolicyStatus()
 										.then(data => {
-											if (data.PP == 0 || data.PP_time == "") {
+											if (policyConsentRequired(data)) {
 												const policyModal = new PolicyModalComponent({
 													policy: "PP",
 													policyStatus: data,
@@ -2001,7 +2001,7 @@ function toggle_fw_check(state) {
 			</tr>
 		</table>
 
-		<table id="secur_stab_setting" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
+		<table id="secur_stab_setting" style="display:none;" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 			<thead>
 			<tr>
 				<td colspan="2"><#Secur_Stab_auto_upgrade#></td>
@@ -2012,12 +2012,16 @@ function toggle_fw_check(state) {
 				<td>
 					<div align="center" class="left" style="width:75px; float:left; cursor:pointer;" id="switch_security_update_enable"></div>
 					<script type="text/javascript">
+					if (httpApi.legacyAsusConsent.supported()) {
+						$('#secur_stab_setting').hide();
+					} else {
+					$('#secur_stab_setting').show();
 					$('#switch_security_update_enable').iphoneSwitch(httpApi.securityUpdate.get(),
 						function(){
                             //on
 							const policyStatus = PolicyStatus()
 									.then(data => {
-										if (data.PP == 0 || data.PP_time == "") {
+										if (policyConsentRequired(data)) {
 											const policyModal = new PolicyModalComponent({
 												policy: "PP",
 												policyStatus: data,
@@ -2041,6 +2045,7 @@ function toggle_fw_check(state) {
 							httpApi.securityUpdate.set(0);
 						}
 					);
+					}
 					</script>
 				</td>	
 			</tr>

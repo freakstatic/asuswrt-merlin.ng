@@ -5197,7 +5197,8 @@ goTo.EULA = function(){
 	const policyStatus = PolicyStatus()
 		.then(data => {
 			if(data.EULA =="1"){
-				goTo.PP();
+				if (data.legacy) goTo.Welcome();
+				else goTo.PP();
 			} else {
 				const policy_page = document.querySelector('#policy_page');
 				const qisPolicyPageComponent = new QisPolicyPageComponent({
@@ -5214,6 +5215,10 @@ goTo.EULA = function(){
 goTo.PP = function () {
 	const policyStatus = PolicyStatus()
 		.then(data => {
+			if (data.legacy && !policyConsentRequired(data)) {
+				goTo.Welcome();
+				return;
+			}
 			const policy_page = document.querySelector('#policy_page');
 			const qisPolicyPageComponent = new QisPolicyPageComponent({
 				policy: "PP",

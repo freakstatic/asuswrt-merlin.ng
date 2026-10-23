@@ -4961,7 +4961,8 @@ void init_syspara(void)
 		nvram_set("wps_device_pin", wps_gen_pin(devPwd, sizeof(devPwd)) ? devPwd : "12345670");
 	} else
 		nvram_set("wps_device_pin", value);
-#ifdef RTCONFIG_AMAS
+	/* The retained AX56U shared private object lacks chk_acscli2_cmds(). */
+#if defined(RTCONFIG_AMAS) && !defined(RTAX56U)
 	int ret = 0;
 
 	ret = chk_acscli2_cmds("acs_restart");

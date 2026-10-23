@@ -19243,15 +19243,23 @@ int init_nvram2(void)
 #endif
 
 	/* 2024/12/25 stop asuscomm.cn service. reset values of ddns_enable_x and ddns_hostname_x if WWW.ASUS.COM.CN is used. */
-	if(!strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM.CN") || ( noasusddns() && !strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM"))){
+	/* The AX56U prebuild lacks noasusddns(); retain the direct .CN check there. */
+	if(!strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM.CN")
+	/* These 12.2 hooks are not exported by the retained AX56U private objects. */
+#if !defined(RTAX56U)
+		|| (noasusddns() && !strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM"))
+#endif
+	){
 		nvram_set("ddns_enable_x", "0");
 		nvram_set("ddns_hostname_x", "");
 		nvram_set("ddns_server_x", "");
 		nvram_commit();
 	}
 
+#if !defined(RTAX56U)
 	detect_vul_scan();
 	init_asus_pp_eula();
+#endif
 
 	return 0;
 }  // end of init_nvram2
@@ -21471,7 +21479,9 @@ logmessage("ATE", "boot/continue fail= %d/%d\n", nvram_get_int("Ate_boot_fail"),
 #endif
 			}
 
+#if !defined(RTAX56U)
 			check_wlx_nband_type();
+#endif
 #ifdef RTCONFIG_TR069
 			tr_switch_wan_line(WAN_UNIT_FIRST);
 #endif

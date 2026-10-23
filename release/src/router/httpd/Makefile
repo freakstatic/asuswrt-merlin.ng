@@ -392,6 +392,10 @@ web_hook.o:
 	@-cp -f ./prebuild/web_hook.o .
 endif
 
+ifeq ($(BUILD_NAME),RT-AX56U)
+httpd.o: $(TOP)/shared/ax56u_compat_validation.h
+endif
+
 %.o: %.c .%.depend
 	@echo " [httpd] CC $@"
 	@$(CC) $(CFLAGS) -o $@ -c $<

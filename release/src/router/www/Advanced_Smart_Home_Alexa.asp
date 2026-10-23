@@ -210,7 +210,7 @@ function tag_control() {
 		obj.onclick = function () {
 			const policyStatus = PolicyStatus()
 					.then(data => {
-						if (data.PP == 0 || data.PP_time == '') {
+						if (policyConsentRequired(data)) {
 							const policyModal = new PolicyModalComponent({
 								policy: "PP",
 								policyStatus: data,
@@ -296,7 +296,7 @@ function get_activation_code(){
 
 	const policyStatus = PolicyStatus()
 			.then(data => {
-				if (data.PP == 0 || data.PP_time == '') {
+				if (policyConsentRequired(data)) {
 					const policyModal = new PolicyModalComponent({
 						policy: "PP",
 						policyStatus: data,

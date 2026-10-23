@@ -10209,8 +10209,11 @@ void watchdog(int sig)
 	mem_chk_period = nvram_get_int("mem_chk_period");
 	if (mem_chk_period) {
 		mem_chk = (mem_chk + 1) % mem_chk_period ;
+/* memleakdbg() is absent from the retained AX56U Broadcom prebuild. */
+#if !defined(RTAX56U)
 		if (!mem_chk)
 			memleakdbg();
+#endif
 	}
 
 #if !defined(RTCONFIG_BCM_MFG) && (defined(RTAX82U) || defined(GSAX3000) || defined(GSAX5400) || defined(TUFAX5400) || defined(GTAX11000_PRO) || defined(GTAXE16000) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTAX6000) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2) || defined(DSL_AX82U))

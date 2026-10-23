@@ -22610,12 +22610,17 @@ void stop_fw_check(void)
 
 void start_firmware_webs_update(void)
 {
+#if defined(RTAX56U) && defined(RTCONFIG_CFGSYNC)
+	/* Report the same explicit unsupported result as the installed applet. */
+	firmware_webs_update_main(0, NULL);
+#else
 	char *cmd[] = {"/sbin/firmware_webs_update", NULL};
 	pid_t pid;
 
 	stop_firmware_webs_update();
 
 	_eval(cmd, NULL, 0, &pid);
+#endif
 }
 
 void stop_firmware_webs_update(void)

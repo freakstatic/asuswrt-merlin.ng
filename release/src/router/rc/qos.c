@@ -31,6 +31,9 @@
 #include <bwdpi.h>
 #endif
 #include <webapi.h>
+#ifdef RTAX56U
+#include <ax56u_compat_validation.h>
+#endif
 
 /*
 	DEBUG DEFINE
@@ -359,6 +362,30 @@ end:
 	}
 	QOSLOG("is_ip=%d, is_mac=%d, is_range=%d, type=%d, new=%s", is_ip, is_mac, is_range, *type, new);
 }
+
+#ifdef RTAX56U
+static void ax56u_bw_address(int *type, const char *addr, char *out, size_t size)
+{
+	int kind = ax56u_qos_address(addr, out, size);
+	*type = TYPE_UNKNOWN;
+	if (kind == AX56U_QOS_IP) *type = TYPE_IP;
+	else if (kind == AX56U_QOS_RANGE) *type = TYPE_IPRANGE;
+	else if (kind == AX56U_QOS_MAC) {
+		*type = TYPE_MAC;
+#ifdef RTCONFIG_AMAS
+		/* Keep the existing AiMesh MAC-to-IP behavior, but validate its result. */
+		char ip[40] = {0};
+		if (amas_lib_device_ip_query((char *)addr, ip) && ax56u_ipv4(ip)) {
+			snprintf(out, size, "%s", ip);
+			*type = TYPE_IP;
+		}
+#endif
+	}
+	/* wlX.Y entries have no per-client rule in the existing implementation;
+	 * guest interfaces are shaped separately below. Do not reinterpret them.
+	 */
+}
+#endif
 
 static unsigned calc(unsigned bw, unsigned pct)
 {
@@ -1477,15 +1504,25 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	}
 
 	g = buf = strdup(nvram_safe_get("qos_bw_rulelist"));
+/* The AX56U source checks below replace the unavailable private validator. */
+#if !defined(RTAX56U)
 	if(!validate_apply_input_value(g, "qos_bw_rulelist"))
 		goto QOS_BW_END;
+#endif
 
 	while (g) {
 		if ((p = strsep(&g, "<")) == NULL) break;
+#ifdef RTAX56U
+		if (!ax56u_qos_record(p)) continue;
+#endif
 		if ((vstrsep(p, ">", &enable, &addr, &dlc, &upc, &prio)) != 5) continue;
 		if (!strcmp(enable, "0")) continue;
 		memset(addr_new, 0, sizeof(addr_new));
+#ifdef RTAX56U
+		ax56u_bw_address(&addr_type, addr, addr_new, sizeof(addr_new));
+#else
 		address_format_checker(&addr_type, addr, addr_new, sizeof(addr_new));
+#endif
 		QOSDBG("[BWLIT] addr_type=%d, addr=%s, add_new=%s, lan_addr=%s\n", addr_type, addr, addr_new, lan_addr);
 
 		if (addr_type == TYPE_IP){
@@ -1566,6 +1603,11 @@ static int start_bandwidth_limiter(void)
 	char wl_ifname[IFNAMSIZ];
 	char *qsched;
 
+#ifdef RTAX56U
+	/* This interface is embedded in a shell assignment, not passed via argv. */
+	if (!ax56u_ifname(get_wan_ifname(wan_primary_ifunit()))) return -1;
+#endif
+
 #ifdef RTCONFIG_BCMARM
 	qsched = "fq_codel quantum 300 limit 1000 noecn";
 #else
@@ -1624,15 +1666,24 @@ static int start_bandwidth_limiter(void)
 	*/
 
 	g = buf = strdup(nvram_safe_get("qos_bw_rulelist"));
+#if !defined(RTAX56U)
 	if(!validate_apply_input_value(g, "qos_bw_rulelist"))
 		goto QOS_BW_END;
+#endif
 
 	while (g) {
 		if ((p = strsep(&g, "<")) == NULL) break;
+#ifdef RTAX56U
+		if (!ax56u_qos_record(p)) continue;
+#endif
 		if ((vstrsep(p, ">", &enable, &addr, &dlc, &upc, &prio)) != 5) continue;
 		if (!strcmp(enable, "0")) continue;
 
+#ifdef RTAX56U
+		ax56u_bw_address(&addr_type, addr, addr_new, sizeof(addr_new));
+#else
 		address_format_checker(&addr_type, addr, addr_new, sizeof(addr_new));
+#endif
 		class = safe_atoi(prio) + INITIAL_MARKNUM;
 		if (addr_type == TYPE_MAC)
 		{
@@ -1703,6 +1754,15 @@ QOS_BW_END:
 					if(j == 3) wl_if = "vlan4002";
 				}
 
+				/* The same generated script also interpolates guest ceilings. */
+#ifdef RTAX56U
+				if (!ax56u_ifname(wl_if) ||
+				    !ax56u_qos_rate(nvram_safe_get(strcat_r(wlv, "_bw_dl", tmp))) ||
+				    !ax56u_qos_rate(nvram_safe_get(strcat_r(wlv, "_bw_ul", tmp)))) {
+					j++;
+					continue;
+				}
+#endif
 				QOSDBG("[BWLIT_GUEST] Processor [%s] Interface \n", wl_if);
 
 				fprintf(f,
@@ -1781,6 +1841,12 @@ QOS_BW_END:
 					if(j == 2) wl_if = "vlan4001";
 					if(j == 3) wl_if = "vlan4002";
 				}
+#ifdef RTAX56U
+				if (!ax56u_ifname(wl_if)) {
+					j++;
+					continue;
+				}
+#endif
 				fprintf(f, "\ttc qdisc del dev %s root 2>/dev/null\n", wl_if);
 			}
 			j++;

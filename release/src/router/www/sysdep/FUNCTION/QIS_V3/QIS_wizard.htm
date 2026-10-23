@@ -170,8 +170,8 @@
 					systemVariable.maxPasswordLen = getSupportNum("MaxLen_http_passwd");
 					systemVariable.originWansMode = initNvram.wans_mode;
 					systemVariable.keepDefpsk = isSupport("defpsk");
-					systemVariable.eulaStatus = initNvram.ASUS_NEW_EULA;
-					httpApi.privateEula.get().then(data=>{
+					systemVariable.eulaStatus = httpApi.legacyAsusConsent.supported() ? httpApi.legacyAsusConsent.get().ASUS_EULA : initNvram.ASUS_NEW_EULA;
+					if (!httpApi.legacyAsusConsent.supported()) httpApi.privateEula.get().then(data=>{
 						systemVariable.ppStatus = data
 					});
 					systemVariable.macClone = false;
@@ -229,9 +229,9 @@
 
 					const policyStatus = PolicyStatus()
 							.then(data => {
-								if (data.EULA == "0" || data.EULA_time == "") {
+								if (data.legacy ? policyConsentRequired(data) : data.EULA == "0" || data.EULA_time == "") {
 									goTo.EULA();
-								} else if (data.EULA == 1 && ((data.PP == 1 && data.PP_time != "") || (data.PP == 0 && data.PP_time == ""))) {
+								} else if (!data.legacy && data.EULA == 1 && ((data.PP == 1 && data.PP_time != "") || (data.PP == 0 && data.PP_time == ""))) {
 									goTo.PP();
 								} else {
 									switch (urlParameter.get("flag") || "") {

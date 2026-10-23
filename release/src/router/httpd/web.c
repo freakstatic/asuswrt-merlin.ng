@@ -411,13 +411,15 @@ extern void do_get_nonce_cgi(char *url, FILE *stream);
 extern void do_register_app_cnonce_cgi(char *url, FILE *stream);
 extern int validate_httpd_auth_v2(char *authorization_t, char *id, char *cnonce);
 
-#if defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)
+#if (defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)) && !defined(RTAX56U)
 extern void do_set_security_update_cgi(char *url, FILE *stream);
 extern void do_get_security_update_cgi(char *url, FILE *stream);
 #endif
 
+#if !defined(RTAX56U)
 extern void do_set_ASUS_privacy_policy_cgi(char *url, FILE *stream);
 extern void do_get_ASUS_privacy_policy_cgi(char *url, FILE *stream);
+#endif
 
 /*
 #define csprintf(fmt, args...) do{\
@@ -3661,8 +3663,11 @@ int validate_instance(webs_t wp, char *name, json_object *root, json_object *act
 				if(strstr(name, "maclist") && check_cmd_injection_blacklist(value))
 					continue;
 
+				/* The AX56U HTTPD prebuild lacks the new NVRAM audit hooks. */
+#if !defined(RTAX56U)
 				/* log wlx nvram */
 				nvram_modify_log(tmp, nvram_safe_get(tmp), value, activity_obj);
+#endif
 
 				nvram_check_and_set_for_prefix(name, tmp, value);
 #if defined(RTCONFIG_NOTIFICATION_CENTER)
@@ -4158,8 +4163,10 @@ int validate_apply(webs_t wp, json_object *root)
 					if(strstr(name, "maclist") && check_cmd_injection_blacklist(value))
 						continue;
 
+#if !defined(RTAX56U)
 					/* log wl with unit */
 					nvram_modify_log(tmp, nvram_safe_get(tmp), value, activity_obj);
+#endif
 
 					nvram_set(tmp, value);
 #if defined(RTCONFIG_NOTIFICATION_CENTER)
@@ -4562,7 +4569,9 @@ int validate_apply(webs_t wp, json_object *root)
 				}
 
 				/* log no prefix nvram */
+#if !defined(RTAX56U)
 				nvram_modify_log(name, nvram_safe_get(name), value, activity_obj);
+#endif
 #ifdef RTCONFIG_CFGSYNC
 				save_changed_param(cfg_root, name);
 #endif                           
@@ -4815,7 +4824,9 @@ int validate_apply(webs_t wp, json_object *root)
 		httpd_nvram_commit();
 	}
 
+#if !defined(RTAX56U)
 	handle_nvram_modify_log(activity_obj);
+#endif
 
 	if(activity_obj)
 		json_object_put(activity_obj);
@@ -20701,6 +20712,7 @@ normal:
 }
 #endif
 
+#if !defined(RTAX56U)
 static void
 do_set_ASUS_NEW_EULA_cgi(char *url, FILE *stream)
 {
@@ -20720,6 +20732,7 @@ do_set_ASUS_NEW_EULA_cgi(char *url, FILE *stream)
 
 	websWrite(stream, "{\"statusCode\":\"%d\"}", ret);
 }
+#endif
 
 static void
 do_set_ASUS_EULA_cgi(char *url, FILE *stream)
@@ -25922,9 +25935,11 @@ struct mime_handler mime_handlers[] =
 	{ "upgrade.cgi*", "text/html", no_cache_IE7, do_upgrade_post, do_upgrade_cgi, do_auth},
 	{ "upload.cgi*", "text/html", no_cache_IE7, do_upload_post, do_upload_cgi, do_auth },
 	{ "set_ASUS_EULA.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_set_ASUS_EULA_cgi, do_auth },
+#if !defined(RTAX56U)
 	{ "set_ASUS_NEW_EULA.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_set_ASUS_NEW_EULA_cgi, do_auth },
 	{ "set_ASUS_privacy_policy.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_set_ASUS_privacy_policy_cgi, do_auth },
 	{ "get_ASUS_privacy_policy.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_get_ASUS_privacy_policy_cgi, do_auth },
+#endif
 	{ "set_TM_EULA.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_set_TM_EULA_cgi, do_auth },
 	{ "set_app_mnt.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_set_app_mnt_cgi, do_auth },
 	{ "get_app_mnt.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_get_app_mnt_cgi, do_auth },
@@ -26186,7 +26201,7 @@ struct mime_handler mime_handlers[] =
 #ifdef RTCONFIG_SOFTWIRE46
 	{ "s46reset.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_s46reset_cgi, do_auth },
 #endif
-#if defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)
+#if (defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)) && !defined(RTAX56U)
 	{ "set_security_update.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_set_security_update_cgi, do_auth },
 	{ "get_security_update.cgi*", "text/html", no_cache_IE7, do_html_post_and_get, do_get_security_update_cgi, do_auth },
 #endif

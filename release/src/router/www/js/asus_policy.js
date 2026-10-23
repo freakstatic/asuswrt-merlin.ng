@@ -673,6 +673,15 @@ let policy_status = {
 
 async function PolicyStatus() {
     let policy_status = {};
+    if (httpApi.legacyAsusConsent.supported()) {
+        const consent = httpApi.legacyAsusConsent.get();
+        const data = httpApi.nvramGet(["TM_EULA", "TM_EULA_time", "preferred_lang"], true);
+        return {
+            legacy: true, ASUS_EULA: consent.isError ? "0" : consent.ASUS_EULA,
+            EULA: consent.isError ? "0" : consent.ASUS_EULA, EULA_time: consent.ASUS_EULA_time,
+            TM: data.TM_EULA, TM_time: data.TM_EULA_time, Policy_lang: data.preferred_lang
+        };
+    }
     await httpApi.privateEula.get()
         .then(data => {
             policy_status.PP = data.ASUS_PP;
@@ -692,6 +701,103 @@ async function PolicyStatus() {
 PolicyStatus().then(data => {
     policy_status = data;
 });
+
+// Do not represent legacy consent as a signed PPv2 policy (or invent a date).
+function policyConsentRequired(data) {
+    return data.legacy ? data.ASUS_EULA !== "1" : data.PP == 0 || data.PP_time == "";
+}
+
+// The localized notice and age check below are from 3004.388.8_4/asus_eula.htm.
+// Both newer EULA and PP entry points mean this *single* legacy notice on AX56U.
+class LegacyAsusPolicyComponent {
+    constructor(props, qis = false) {
+        this.props = props;
+        this.qis = qis;
+        this.element = document.createElement('div');
+        this.element.id = props.id || 'policy_popup_modal';
+        const root = this.element.attachShadow({mode: 'open'});
+        root.innerHTML = `<style>
+            :host { color: #fff; font: 16px Arial; }
+            .legacy { background: #293438; padding: 20px; box-sizing: border-box; }
+            .overlay { position: fixed; inset: 0; z-index: 10000; background: #0008; display: flex; align-items: center; justify-content: center; }
+            .overlay .legacy { width: 760px; max-width: 95vw; max-height: 90vh; overflow: auto; }
+            .notice { max-height: 55vh; overflow-y: auto; padding: 10px; border: 1px solid #777; }
+            button { margin: 15px 10px 0 0; padding: 10px 20px; cursor: pointer; }
+            a { color: #9cf; } .error { color: #ffb0a0; }
+        </style><div class="${qis ? '' : 'overlay'}"><div class="legacy">
+            <h2><#ASUS_Notice#></h2>
+            <div class="notice">
+                <div class="legacy-services"><#ASUS_eula_desc0#></div>
+                <ol><li><#ASUS_eula_desc1#><ol>
+                    <li><#ASUS_eula_desc1_1#><ol><li class="legacy-log"><#ASUS_eula_desc1_1_1#></li></ol></li>
+                    <li><#ASUS_eula_desc1_2_s1#> <#ASUS_eula_desc1_2_s2#><ol><li><#ASUS_eula_desc1_2_1#></li></ol></li>
+                    <li class="legacy-alexa"><#ASUS_eula_desc1_3#></li><li class="legacy-ifttt"><#ASUS_eula_desc1_4#></li>
+                </ol></li><li><#ASUS_eula_desc2#></li></ol>
+            </div>
+            <p><label><input type="checkbox" id="legacy-age"> <#ASUS_eula_age#></label></p>
+            <div class="error" role="alert"></div>
+            <button type="button" class="decline"><#CTL_Disagree#></button>
+            <button type="button" class="accept"><#CTL_Agree#></button>
+        </div></div>`;
+        const support = httpApi.hookGet('get_ui_support') || {};
+        const services = ['DDNS'];
+        if (support.ifttt) services.push('IFTTT™');
+        if (support.alexa) services.push('Alexa™');
+        services.push('Tencent Download Acceleration');
+        root.querySelector('.legacy-services').innerHTML = root.querySelector('.legacy-services').innerHTML.replace('DDNS', services.join('/'));
+        if (!support.ifttt) {
+            root.querySelector('.legacy-ifttt').style.display = 'none';
+            root.querySelector('.legacy-log').innerHTML = support.alexa ? `<#ASUS_eula_desc1_1_12#>` : `<#ASUS_eula_desc1_1_13#>`;
+        }
+        if (!support.alexa) root.querySelector('.legacy-alexa').style.display = 'none';
+        const link = root.querySelector('#eula_url');
+        if (link) link.href = 'https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Policy&lang=' + encodeURIComponent((props.policyStatus || policy_status).Policy_lang || 'EN') + '&kw=&num=';
+        if (props.withdraw) {
+            root.querySelector('.notice').innerHTML = `<p><#ASUS_eula_withdraw_desc1#></p><p><#ASUS_eula_withdraw_desc1_2#></p><p><#ASUS_eula_withdraw_desc2#></p><ol><li><#ASUS_eula_withdraw_desc2_1#></li><li><#ASUS_eula_withdraw_desc2_2#></li><li><#ASUS_eula_withdraw_desc2_AlexaIFTTT#></li></ol>`;
+            root.querySelector('#legacy-age').parentNode.style.display = 'none';
+            root.querySelector('.accept').textContent = `<#withdraw_str#>`;
+            root.querySelector('.decline').textContent = `<#CTL_Cancel#>`;
+        }
+        root.querySelector('.accept').addEventListener('click', () => this.accept());
+        root.querySelector('.decline').addEventListener('click', () => {
+            if (this.busy) return;
+            this.hide();
+            if (props.withdraw) return;
+            if (qis) goTo.Welcome();
+            else if (props.knowRiskCallback) props.knowRiskCallback();
+            else if (props.disagreeCallback) props.disagreeCallback();
+        });
+    }
+    accept() {
+        if (this.busy) return;
+        const root = this.element.shadowRoot;
+        if (!this.props.withdraw && !root.querySelector('#legacy-age').checked) {
+            root.querySelector('.error').textContent = `<#ASUS_eula_age_confirm#>`;
+            return;
+        }
+        this.busy = true;
+        root.querySelector('.accept').disabled = true;
+        root.querySelector('.decline').disabled = true;
+        const success = (state, unconfirmed) => {
+            if (unconfirmed) alert(`<#ASUS_eula_withdraw_unstable#>`);
+            this.hide();
+            if (this.props.withdraw && this.props.knowRiskCallback) this.props.knowRiskCallback();
+            else if (this.qis) goTo.Welcome();
+            else if (this.props.agreeCallback) this.props.agreeCallback();
+        };
+        const error = () => {
+            this.busy = false;
+            root.querySelector('.accept').disabled = false;
+            root.querySelector('.decline').disabled = false;
+            root.querySelector('.error').textContent = 'Unable to save ASUS consent. Please retry.';
+        };
+        if (this.props.withdraw) httpApi.legacyAsusConsent.withdraw(success, error);
+        else httpApi.legacyAsusConsent.set("1", success, error);
+    }
+    render() { return this.element; }
+    show() { top.document.body.appendChild(this.element); }
+    hide() { this.element.remove(); }
+}
 
 class PolicyScrollDiv {
 
@@ -790,6 +896,9 @@ class PolicyScrollDiv {
 
 class PolicyModalComponent {
     constructor(props) {
+        if (httpApi.legacyAsusConsent.supported() && (props.policy === 'PP' || props.policy === 'EULA')) {
+            return new LegacyAsusPolicyComponent(props);
+        }
         const {
             id = 'policy_popup_modal',
             policy,
@@ -984,6 +1093,7 @@ class PolicyModalComponent {
     }
 
     checkPolicy = () => {
+        if (httpApi.legacyAsusConsent.supported()) return;
         const status = PolicyStatus()
             .then(data => {
                 httpApi.log('policy_status', JSON.stringify(data));
@@ -1195,7 +1305,8 @@ class DisagreeNoticeComponent {
 
 class PolicyWithdrawModalComponent extends PolicyModalComponent {
     constructor(props) {
-        super(props);
+        super(httpApi.legacyAsusConsent.supported() ? {...props, policy: 'EULA', withdraw: true} : props);
+        if (httpApi.legacyAsusConsent.supported()) return this;
         const {
             id = 'policy_popup_modal',
             theme = this.getTheme(),
@@ -1289,7 +1400,8 @@ class PolicyWithdrawModalComponent extends PolicyModalComponent {
 
 class PolicyUpdateModalComponent extends PolicyModalComponent {
     constructor(props) {
-        super(props);
+        super(httpApi.legacyAsusConsent.supported() ? {...props, policy: 'EULA'} : props);
+        if (httpApi.legacyAsusConsent.supported()) return this;
         const {
             id = 'policy_popup_modal', theme = this.getTheme(), securityUpdate = true, websUpdate = true,
             policyStatus = policy_status,
@@ -1353,6 +1465,7 @@ class ThirdPartyPolicyModalComponent extends PolicyModalComponent {
 
 class QisPolicyPageComponent {
     constructor(props) {
+        if (httpApi.legacyAsusConsent.supported()) return new LegacyAsusPolicyComponent(props, true);
         const {
             policy, theme = this.getTheme(), policyStatus = policy_status
         } = props;

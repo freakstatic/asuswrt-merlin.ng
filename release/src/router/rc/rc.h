@@ -2366,12 +2366,20 @@ extern void fmrs2file(int unit);
 extern void init_wan46(void);
 // v6plusd.c
 #define V6PLUSD_PIDFILE "/var/run/v6plusd.%d.pid"
+#if defined(RTAX56U)
+extern char *s46_jpne_maprules(char *id, char *idbuf, size_t idlen, long *rsp_code);
+#else
 extern char *get_jpix_map(const int wan_unit, char *id, char *idbuf, size_t idlen, long *rsp_code);
+#endif
 extern int check_v6plusd(int unit);
 extern int v6plusd_main(int argc, char **argv);
 // ocnvcd.c
 #define OCNVCD_PIDFILE "/var/run/ocnvcd.%d.pid"
+#if defined(RTAX56U)
+extern char *s46_ocn_maprules(char *v6perfix, int prefixlen, long *rsp_code);
+#else
 extern char *get_ocn_map(const int wan_unit, char *v6perfix, int prefixlen, long *rsp_code);
+#endif
 extern int check_ocnvcd(int unit);
 extern int ocnvcd_main(int argc, char **argv);
 // dslited.c

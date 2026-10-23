@@ -91,6 +91,24 @@ double wl_get_txpwr_target_max(char *name);
 double get_wifi_maxpower(int target_unit);
 #endif
 
+#if defined(RTAX56U) && defined(RTCONFIG_CFGSYNC)
+/* No compatible mesh firmware-check implementation exists in the AX56U blob. */
+int firmware_webs_update_main(int argc, char *argv[])
+{
+	(void)argc;
+	(void)argv;
+	fprintf(stderr, "firmware_webs_update: unsupported on this RT-AX56U build\n");
+	logmessage("firmware", "Mesh firmware update check is unsupported on RT-AX56U; use manual firmware upload");
+	/* Complete the request with an error, never leave a pending/success state. */
+	nvram_set("webs_state_flag", "0");
+	nvram_set("webs_state_error", "1");
+	nvram_set("webs_state_update", "1");
+	return ENOTSUP;
+}
+#endif
+
+#if !defined(RTAX56U)
+/* The retained RT-AX56U FRS prebuild already provides this helper. */
 int getPid_fromFile(char *file_name)
 {
 	FILE *fp;
@@ -107,6 +125,7 @@ int getPid_fromFile(char *file_name)
 
 	return result;
 }
+#endif
 
 // led_str_ctrl
 enum led_id get_led_id(const char *led_str)
@@ -850,7 +869,8 @@ static int rctest_main(int argc, char *argv[])
 		fflush(stdout);
 	}
 #endif
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BCMWL6)
+/* The RT-AX56U prebuild does not export the newer ACS private helpers. */
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BCMWL6) && !defined(RTAX56U)
 	else if (strcmp(argv[1], "chk_acsc")==0) {
         	int ret = 0;
 
@@ -2377,7 +2397,7 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_FRS_LIVE_UPDATE)
 	{ "firmware_check_update",	firmware_check_update_main	},
 #endif
-#ifdef RTCONFIG_CFGSYNC
+#if defined(RTCONFIG_CFGSYNC)
 	{ "firmware_webs_update",	firmware_webs_update_main	},
 #endif
 #ifdef RTCONFIG_FRS_FEEDBACK

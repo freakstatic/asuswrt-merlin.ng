@@ -3064,7 +3064,12 @@ void wan6_up(const char *pwan_ifname)
 		case WAN_V6OPTION:
 			draft = 1;
 			if (nvram_get_int(strcat_r(prefix, "dhcpenble_x", tmp))) {
+/* AX56U keeps the older mapping APIs exported by its 388.8_4 prebuilds. */
+#if defined(RTAX56U)
+				rules = s46_jpne_maprules(NULL, NULL, 0, &rsp_code);
+#else
 				rules = get_jpix_map(wan_unit, NULL, NULL, 0, &rsp_code);
+#endif
 				goto s46_mapcalc;
 			}
 			type = "map-e";
@@ -3074,7 +3079,11 @@ void wan6_up(const char *pwan_ifname)
 		case WAN_OCNVC:
 			draft = 1;
 			if (nvram_get_int(strcat_r(prefix, "dhcpenble_x", tmp))) {
+#if defined(RTAX56U)
+				rules = s46_ocn_maprules(nvram_safe_get("ipv6_ra_addr"), nvram_get_int("ipv6_ra_length"), &rsp_code);
+#else
 				rules = get_ocn_map(wan_unit, nvram_safe_get("ipv6_ra_addr"), nvram_get_int("ipv6_ra_length"), &rsp_code);
+#endif
 				goto s46_mapcalc;
 			}
 			type = "map-e";
@@ -5681,4 +5690,3 @@ int detwan_main(int argc, char *argv[]){
 	return 0;
 }
 #endif	/* RTCONFIG_DETWAN */
-

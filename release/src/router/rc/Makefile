@@ -2082,6 +2082,10 @@ gpy211_war.o:
 	@-cp -f ./prebuild/gpy211_war.o .
 endif
 
+ifeq ($(BUILD_NAME),RT-AX56U)
+qos.o rc_ipsec.o: $(TOP)/shared/ax56u_compat_validation.h
+endif
+
 %.o: %.c
 	@echo " [rc] CC $@"
 	@$(CC) $(CFLAGS) -c $<

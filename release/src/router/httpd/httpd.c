@@ -77,6 +77,10 @@ typedef unsigned int __u32;   // 1225 ham
 #include <sys/wait.h>
 #include <shared.h>
 #include <shutils.h>
+#ifdef RTAX56U
+#include <webapi.h>
+#include <ax56u_compat_validation.h>
+#endif
 
 #define ETCPHYRD	14
 #define SIOCGETCPHYRD   0x89FE
@@ -1479,7 +1483,15 @@ handle_request(void)
 		if (do_ssl && !strcmp(url, "offline.htm"))
 			continue;
 #endif
-		if ((match(handler->pattern, url) || customized_match(handler->pattern, url)) && !httpd_reject_url(url))
+		if ((match(handler->pattern, url) || customized_match(handler->pattern, url))
+#if !defined(RTAX56U)
+			&& !httpd_reject_url(url)
+#else
+			/* Source fallback for the private hook's manual-firmware page
+			 * capability gate, not a claim of generic URL sanitization. */
+			&& !ax56u_reject_url(url, is_noFwManual())
+#endif
+		)
 		{	
 			if ( request_content_range!=NULL && strncasecmp( request_content_range, "bytes=", 6 ) == 0) {
 #ifdef RTCONFIG_TC_GAME_ACC

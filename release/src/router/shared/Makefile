@@ -137,6 +137,9 @@ endif
 
 OBJS = shutils.o defaults.o model.o rtstate.o boardapi.o
 OBJS += network_utility.o
+ifeq ($(BUILD_NAME),RT-AX56U)
+OBJS += ax56u_legacy_consent.o
+endif
 OBJS += misc.o version.o files.o strings.o process.o
 OBJS += bin_sem_asus.o semaphore.o pids.o $(if $(wildcard notify_rc.c),notify_rc.o,prebuild/notify_rc.o)
 OBJS += discover.o

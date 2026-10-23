@@ -4657,6 +4657,9 @@ function plainPasswordSwitch(obj, event){
 }
 
 function checkPolicy() {
+	// Legacy ASUS consent is optional and requested by service entry points, not
+	// by every visit to the local administration UI.
+	if (httpApi.legacyAsusConsent.supported()) return;
 	const policyStatus = PolicyStatus()
 		.then(data => {
 			if (data.EULA == "0") {
