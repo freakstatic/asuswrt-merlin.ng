@@ -13,6 +13,11 @@
 > your router, erase settings, or disrupt your network. There is no guarantee of
 > safety, functionality, security, or successful recovery.
 
+## RT-AX56U port
+
+See the [3004.388.12_2 port notes](docs/rt-ax56u-3004.388.12_2.md) for the source
+base, compatibility limits, build command, image-format differences and test scope.
+
 ## Experimental firmware warning
 
 - A successful build or a reported successful flash is not a guarantee of safety,
