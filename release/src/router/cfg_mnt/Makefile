@@ -23,10 +23,14 @@ LDFLAGS += -lpthread
 LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 LDFLAGS += -lm
 LDFLAGS += -L./ -lcfgmnt
+ifeq ($(RTCONFIG_MLO),y)
 LDFLAGS += -L$(TOP)/networkmap/api/ -lnmpapi
+endif
 
 LDFLAGS_LIB += -L$(TOP_PLATFORM)/nvram${BCMEX}${EX7} -lnvram -L$(TOP)/shared -lshared -L$(TOP)/json-c/.libs -ljson-c
+ifeq ($(RTCONFIG_MLO),y)
 LDFLAGS_LIB += -L$(TOP)/networkmap/api/ -lnmpapi
+endif
 
 ifeq ($(RTCONFIG_DMALLOC),y)
 CFLAGS += -DDMALLOC -DDMALLOC_FUNC_CHECK -I$(STAGEDIR)/usr/include

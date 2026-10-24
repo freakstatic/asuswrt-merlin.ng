@@ -41,6 +41,7 @@
 </style>
 <script>
 var link_internet = httpApi.nvramGet(["link_internet"], true).link_internet;
+var legacy_asus_consent = httpApi.legacyAsusConsent.supported();
 
 function initial(){
     var url1 = "";
@@ -62,7 +63,12 @@ function initial(){
                 }
             }
 
-            if (data.PP >= 1) {
+            if (legacy_asus_consent) {
+				$("#eula, #pp").hide();
+				$("#legacy_asus_eula").show();
+				$("#asus_withdraw_btn").toggle(data.ASUS_EULA === "1");
+				$("#legacy_consent_status").text(data.ASUS_EULA_error ? "Unable to read ASUS consent. Please retry." : "ASUS_EULA=" + data.ASUS_EULA);
+			} else if (data.PP >= 1) {
                 //Withdraw PP
                 $("#pp").find('.btn_subusage').attr({
                     'onclick': `show_policy_withdraw('PP')`,
@@ -139,10 +145,11 @@ function show_policy(policy_type) {
                 });
                 policyModal.show();
 
-            } else {
+			} else {
 				const policyModal = new PolicyModalComponent({
 					policy: policy_type,
 					policyStatus: data,
+					agreeCallback: function () { if (legacy_asus_consent) location.reload(); },
 				});
 				policyModal.show();
 			}
@@ -152,6 +159,23 @@ function show_policy(policy_type) {
 function withdraw_eula(eula_type){
 
 	switch(eula_type){
+		case "asus":
+			if (!legacy_asus_consent || !confirm("<#withdraw_confirm#>")) return;
+			if (httpApi.nvramGet(["link_internet"], true).link_internet != "2") {
+				alert("<#ASUS_eula_withdraw_note#>");
+				return;
+			}
+			$("#asus_withdraw_btn").hide();
+			$("#asus_loadingicon").show();
+			httpApi.legacyAsusConsent.withdraw(function(state, unconfirmed) {
+				if (unconfirmed) alert("<#ASUS_eula_withdraw_unstable#>");
+				location.reload();
+			}, function() {
+				$("#asus_withdraw_btn").show();
+				$("#asus_loadingicon").hide();
+				alert("<#ASUS_eula_withdraw_unstable#>");
+			});
+			break;
 
 		case "tm":
 			if(confirm("<#withdraw_confirm#>")){
@@ -206,7 +230,22 @@ function withdraw_eula(eula_type){
 									<div id="formfonttitle" class="formfonttitle"><#menu5_6#> - <#ASUS_Notice_Privacy#></div>
 									<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 
-									<div id="eula" class="eula_withdraw">
+					<div id="legacy_asus_eula" class="eula_withdraw" style="display:none;">
+						<div class="eula_withdraw_title"><#ASUS_Notice#></div>
+						<div class="eula_withdraw_content">
+							<div id="legacy_consent_status"></div>
+							<div><#ASUS_eula_withdraw_desc1#></div>
+							<div><#ASUS_eula_withdraw_desc1_2#></div>
+							<div><#ASUS_eula_withdraw_desc2#></div>
+							<ol><li><#ASUS_eula_withdraw_desc2_1#></li><li><#ASUS_eula_withdraw_desc2_2#></li><li><#ASUS_eula_withdraw_desc2_AlexaIFTTT#></li></ol>
+						</div>
+						<div style="text-align:center; margin-bottom:10px;">
+							<input class="button_gen" onclick="show_policy('EULA');" type="button" value="<#Reading#>"/>
+							<input class="button_gen" id="asus_withdraw_btn" onclick="withdraw_eula('asus');" type="button" value="<#withdraw_str#>"/>
+							<img id="asus_loadingicon" style="display:none;" src="/images/InternetScan.gif">
+						</div>
+					</div>
+					<div id="eula" class="eula_withdraw">
 										<div class="eula_withdraw_title"><#ASUS_EULA_Title#> (EULA)</div>
 										<div class="eula_withdraw_content">
 											<div><#ASUS_EULA_Info#></div>

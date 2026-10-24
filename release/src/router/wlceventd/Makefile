@@ -61,7 +61,9 @@ ifeq ($(RTCONFIG_CFGSYNC),y)
 CFLAGS += -I$(TOP)/cfg_mnt
 CFLAGS += -I$(TOP)/networkmap/api
 LDFLAGS += -L$(TOP)/cfg_mnt -lcfgmnt
+ifeq ($(RTCONFIG_MLO),y)
 LDFLAGS += -L$(TOP)/networkmap/api/ -lnmpapi
+endif
 endif
 
 ifeq ($(RTCONFIG_SW_HW_AUTH), y)
@@ -104,4 +106,3 @@ ${OBJS}:
 
 wlceventd: bcmutils.o ${OBJS}
 	$(CC) $(CFLAGS) $^ -o $@  $(LDFLAGS)
-

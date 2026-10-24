@@ -3963,7 +3963,7 @@ define RouterOptions
 		sed -i "/RTCONFIG_VPN_FUSION_SUPPORT_INTERFACE/d" $(1); \
 		echo "RTCONFIG_VPN_FUSION_SUPPORT_INTERFACE=y" >>$(1); \
 	fi;
-	if [ "$(TPVPN)" = "n" ]; then \
+	if [ "$(TPVPN)" = "n" ] || [ "$(BUILD_NAME)" = "RT-AX56U" ]; then \
 		sed -i "/RTCONFIG_TPVPN/d" $(1); \
 		echo "# RTCONFIG_TPVPN is not set" >>$(1); \
 		sed -i "/RTCONFIG_HMA/d" $(1); \
@@ -5185,6 +5185,10 @@ define RouterOptions
 		echo "RTCONFIG_ZASSOC_B4ACS=y" >>$(1); \
 	fi;
 	$(call platformRouterOptions, $(1))
+	if [ "$(BUILD_NAME)" = "RT-AX56U" ]; then \
+		sed -i "/RTCONFIG_NBR_RPT/d" $(1); \
+		echo "# RTCONFIG_NBR_RPT is not set" >>$(1); \
+	fi;
 endef
 
 define BusyboxOptions
@@ -7622,4 +7626,3 @@ get_extendno:
 .PHONY: dummy
 .PHONY: pre_tools
 .PHONY: get_extendno
-

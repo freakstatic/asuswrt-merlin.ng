@@ -67,7 +67,7 @@ function initial(){
 
 	const policyStatus = PolicyStatus()
 			.then(data => {
-				if (data.PP < 1) {
+				if (policyConsentRequired(data)) {
 					const policyModal = new PolicyModalComponent({
 						policy: "PP",
 						policyStatus: data,
@@ -184,7 +184,7 @@ function apply_eula_check(){
 	if(document.form.tencent_download_enable.value == "1"){
 		const policyStatus = PolicyStatus()
         			.then(data => {
-        				if (data.PP < 1) {
+						if (policyConsentRequired(data)) {
         					const policyModal = new PolicyModalComponent({
         						policy: "PP",
         						policyStatus: data,

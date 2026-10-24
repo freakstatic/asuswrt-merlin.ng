@@ -85,4 +85,5 @@ ceventc-install: ceventc
 install: $(INST)
 
 clean:
-	rm -f *.o $(EXES) ca_be_str.c
+	# Shipped prebuilt executables are source inputs, not disposable outputs.
+	rm -f *.o $(filter-out prebuilt/%,$(EXES)) ca_be_str.c

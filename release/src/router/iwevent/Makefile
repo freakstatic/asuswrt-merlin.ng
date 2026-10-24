@@ -35,7 +35,9 @@ ifeq ($(RTCONFIG_CFGSYNC),y)
 CFLAGS  += -I$(TOP)/cfg_mnt
 CFLAGS  += -I$(TOP)/networkmap/api
 LDFLAGS += -L$(TOP)/cfg_mnt -lcfgmnt
+ifeq ($(RTCONFIG_MLO),y)
 LDFLAGS += -L$(TOP)/networkmap/api/ -lnmpapi
+endif
 endif 
 
 LDFLAGS +=  -L. -liw
@@ -86,6 +88,4 @@ install: $(STATIC) all
 
 clean:
 	-rm -f $(EXEC) *.elf *.gdb *.o
-
-
 

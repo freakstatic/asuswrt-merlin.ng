@@ -1781,7 +1781,7 @@ endif
 ifeq ($(RTCONFIG_HAPDEVENT),y)
 obj-$(RTCONFIG_HAPDEVENT) += hapdevent
 endif
-obj-y += nmp-api
+obj-$(RTCONFIG_MLO) += nmp-api
 obj-y += networkmap
 ifeq ($(BUILD_NAME), $(filter $(BUILD_NAME), EBG19))
 obj-y += rtkswitch
@@ -3903,7 +3903,7 @@ openssl-3.5/Makefile:
 	@touch $@
 
 openssl-3.5: openssl-3.5/Makefile
-	$(MAKE) -C openssl-3.5 $(PARALLEL_BUILD) && $(MAKE) $@-stage
+	$(MAKE) -C openssl-3.5 CROSS_COMPILE= $(PARALLEL_BUILD) && $(MAKE) $@-stage CROSS_COMPILE=
 
 openssl-3.5-clean:
 	[ ! -f openssl-3.5/Makefile ] || $(MAKE) -C openssl-3.5 clean
@@ -4106,12 +4106,12 @@ rc: shared libev-4.33 $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)$(EX7) libdi
 rc-install:
 	$(MAKE) -C rc INSTALLDIR=$(INSTALLDIR)/rc install
 
-networkmap: nmp-api shared json-c libasc libletsencrypt $(if $(BCM_502L07P2),ethctl_lib) $(if $(RTCONFIG_BWDPI),bwdpi_source)
+networkmap: $(if $(RTCONFIG_MLO),nmp-api) shared json-c libasc libletsencrypt $(if $(BCM_502L07P2),ethctl_lib) $(if $(RTCONFIG_BWDPI),bwdpi_source)
 
-networkmap-install: nmp-api-install
+networkmap-install: $(if $(RTCONFIG_MLO),nmp-api-install)
 	$(MAKE) -C networkmap INSTALLDIR=$(INSTALLDIR)/networkmap install
 
-networkmap-clean: nmp-api-clean
+networkmap-clean: $(if $(RTCONFIG_MLO),nmp-api-clean)
 
 nmp-api:
 	$(MAKE) -C networkmap/api
@@ -7975,11 +7975,13 @@ libcap-ng-clean:
 
 libcap-ng-install: libcap-ng
 	install -D libcap-ng/src/.libs/libcap-ng.so.0.0.0 $(INSTALLDIR)/libcap-ng/usr/lib/libcap-ng.so.0.0.0
-	install -D libcap-ng/src/.libs/libdrop_ambient.so.0.0.0 $(INSTALLDIR)/libcap-ng/usr/lib/libdrop_ambient.so.0.0.0
 	$(STRIP) $(INSTALLDIR)/libcap-ng/usr/lib/libcap-ng.so.0.0.0
-	$(STRIP) $(INSTALLDIR)/libcap-ng/usr/lib/libdrop_ambient.so.0.0.0
 	cd $(INSTALLDIR)/libcap-ng/usr/lib && ln -sf libcap-ng.so.0.0.0 libcap-ng.so.0 && ln -sf libcap-ng.so.0.0.0 libcap-ng.so
-	cd $(INSTALLDIR)/libcap-ng/usr/lib && ln -sf libdrop_ambient.so.0.0.0 libdrop_ambient.so.0 && ln -sf libdrop_ambient.so.0.0.0 libdrop_ambient.so
+	@if [ -f libcap-ng/src/.libs/libdrop_ambient.so.0.0.0 ]; then \
+		install -D libcap-ng/src/.libs/libdrop_ambient.so.0.0.0 $(INSTALLDIR)/libcap-ng/usr/lib/libdrop_ambient.so.0.0.0 && \
+		$(STRIP) $(INSTALLDIR)/libcap-ng/usr/lib/libdrop_ambient.so.0.0.0 && \
+		cd $(INSTALLDIR)/libcap-ng/usr/lib && ln -sf libdrop_ambient.so.0.0.0 libdrop_ambient.so.0 && ln -sf libdrop_ambient.so.0.0.0 libdrop_ambient.so; \
+	fi
 
 openpam: openpam/Makefile
 	$(MAKE) -C $@ $(PARALLEL_BUILD) && $(MAKE) $@-stage
@@ -9414,7 +9416,7 @@ wget-install:
 rtk_wifi_eventd: $(if $(RTCONFIG_CFGSYNC), cfg_mnt)
 
 cfg_mnt: $(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center sqlite wlc_nt) $(if $(RTCONFIG_AMAS),$(LLDPD) amas-utils) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) libasuslog \
-	$(if $(RTCONFIG_DMALLOC),dmalloc) nmp-api
+	$(if $(RTCONFIG_DMALLOC),dmalloc) $(if $(RTCONFIG_MLO),nmp-api)
 
 batctl-2016.0: libnl-bf
 	CFLAGS="-Os -ffunction-sections -fdata-sections $(CFLAGS)" \

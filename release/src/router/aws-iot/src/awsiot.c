@@ -3852,6 +3852,7 @@ static int process_general_shadow_delta_data(json_object *jconfig)
                 break;
             }
 
+#ifndef RTAX56U
             if (strncmp(system_action, AWSIOT_ACTION_UPDATE_PPVERSION, strlen(AWSIOT_ACTION_UPDATE_PPVERSION)) == 0)
             {
 
@@ -3901,6 +3902,11 @@ static int process_general_shadow_delta_data(json_object *jconfig)
 
                 Cdbg(APP_DBG, "Finish to update ppversion, new_ppversion=%d, cur_ppversion=%d, ret=%d", new_ppversion, cur_ppversion, ret);
             }
+#else
+            /* AX56U has legacy consent only; never treat its boolean shim as a PPv2 version. */
+            if (strncmp(system_action, AWSIOT_ACTION_UPDATE_PPVERSION, strlen(AWSIOT_ACTION_UPDATE_PPVERSION)) == 0)
+                Cdbg(APP_DBG, "Ignoring unsupported PPv2 update on RT-AX56U");
+#endif
 
             break;
         }
@@ -4447,16 +4453,18 @@ static int rcv_general_data(char *data, char *topic)
                 nvram_commit();
 #endif
 
+                //- Reset to default pp version
+#ifndef RTAX56U
                 char from_service[10] = {0};
                 snprintf(from_service, sizeof(from_service), "%s", "awsiot");
-
-                //- Reset to default pp version
                 set_ASUS_privacy_policy("1", "0", from_service);
+#endif
 
                 notify_rc("restart_mastiff");
 
                 Cdbg(APP_DBG, "Finish to do unbind");
             }
+#ifndef RTAX56U
             else if (strncmp(system_action, AWSIOT_ACTION_UPDATE_PPVERSION, strlen(AWSIOT_ACTION_UPDATE_PPVERSION)) == 0)
             {
 
@@ -4506,6 +4514,7 @@ static int rcv_general_data(char *data, char *topic)
 
                 Cdbg(APP_DBG, "Finish to update ppversion, new_ppversion=%d, cur_ppversion=%d, ret=%d", new_ppversion, cur_ppversion, ret);
             }
+#endif
 
             break;
         }

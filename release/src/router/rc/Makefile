@@ -373,7 +373,9 @@ ifeq ($(RTCONFIG_CFGSYNC),y)
 CFLAGS += -I$(TOP)/cfg_mnt
 CFLAGS += -I$(TOP)/networkmap/api
 LDFLAGS += -L$(TOP)/cfg_mnt -lcfgmnt
+ifeq ($(RTCONFIG_MLO),y)
 LDFLAGS += -L$(TOP)/networkmap/api/ -lnmpapi
+endif
 endif
 
 ifeq ($(RTCONFIG_SW_HW_AUTH), y)
@@ -2718,6 +2720,10 @@ ifneq ($(wildcard ./prebuild/ark_sig.o),)
 ark_sig.o:
 	@-cp -f ./prebuild/ark_sig.o .
 endif
+endif
+
+ifeq ($(BUILD_NAME),RT-AX56U)
+qos.o rc_ipsec.o: $(TOP)/shared/ax56u_compat_validation.h
 endif
 
 %.o: %.c

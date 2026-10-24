@@ -490,13 +490,15 @@ extern void do_surfshark_login_cgi(char *url, FILE *stream);
 extern void do_surfshark_2fa_cgi(char *url, FILE *stream);
 #endif
 
-#if defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)
+#if (defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)) && !defined(RTAX56U)
 extern void do_set_security_update_cgi(char *url, FILE *stream);
 extern void do_get_security_update_cgi(char *url, FILE *stream);
 #endif
 
+#if !defined(RTAX56U)
 extern void do_set_ASUS_privacy_policy_cgi(char *url, FILE *stream);
 extern void do_get_ASUS_privacy_policy_cgi(char *url, FILE *stream);
+#endif
 
 extern void do_get_nonce_cgi(char *url, FILE *stream);
 extern int validate_httpd_auth_v2(char *authorization_t, char *id, char *cnonce);
@@ -3699,6 +3701,7 @@ static void convert_mswan_wans_settings(const char *new_wans_dualwan)
 #define NVRAM_MODIFIED_DUALWAN_REBOOT		32	/* Other cases */
 #define NVRAM_MODIFIED_DUALWAN_MODE			64  /* ex: FO => LB  or LB => FO */
 #define NVRAM_MODIFIED_DUALWAN_REMOVEUSB	128	/* ex: {wan, usb}  =>  {wan, none} */
+#ifdef RTCONFIG_MULTILAN_CFG
 #define NVRAM_MODIFIED_SDN_BIT				256
 
 static int set_sdn_nvram(const char* name, const char *prefix, json_object *root, int *found)
@@ -3722,6 +3725,7 @@ static int set_sdn_nvram(const char* name, const char *prefix, json_object *root
 	}
 	return 0;
 }
+#endif /* RTCONFIG_MULTILAN_CFG */
 
 
 #ifdef RTCONFIG_CFGSYNC
@@ -3810,7 +3814,9 @@ int validate_instance(webs_t wp, char *name, json_object *root, json_object *act
 				if(strstr(name, "maclist") && check_cmd_injection_blacklist(value))
 					continue;
 				/* log wlx nvram */
+#if !defined(RTAX56U)
 				nvram_modify_log(tmp, nvram_safe_get(tmp), value, activity_obj);
+#endif
 #if defined(RTCONFIG_AMAS_CENTRAL_CONTROL) && defined(RTCONFIG_AMAS_CAP_CONFIG)
 				if (param_is_private == 0)
 #endif
@@ -3854,7 +3860,9 @@ int validate_instance(webs_t wp, char *name, json_object *root, json_object *act
 			if (value && (strcmp(nvram_safe_get(tmp), value))) {
 				dbG("nvram set %s = %s\n", tmp, value);
 				/* log apgx nvram */
+#if !defined(RTAX56U)
 				nvram_modify_log(tmp, nvram_safe_get(tmp), value, activity_obj);
+#endif
 				nvram_check_and_set_for_prefix(name, tmp, value);
 				found |= NVRAM_MODIFIED_SDN_BIT;
 #ifdef RTCONFIG_CFGSYNC
@@ -3869,10 +3877,12 @@ int validate_instance(webs_t wp, char *name, json_object *root, json_object *act
             memset(prefix, 0, sizeof(prefix));
             snprintf(prefix, sizeof(prefix), "apm%d_", i);
             value =  get_cgi_json(strlcat_r(prefix, name+4, tmp, sizeof(tmp)), root);
-            if (value && (strcmp(nvram_safe_get(tmp), value))) {
-                dbG("nvram set %s = %s\n", tmp, value);
+			if (value && (strcmp(nvram_safe_get(tmp), value))) {
+				dbG("nvram set %s = %s\n", tmp, value);
                 /* log apmx nvram */
+#if !defined(RTAX56U)
                 nvram_modify_log(tmp, nvram_safe_get(tmp), value, activity_obj);
+#endif
                 nvram_check_and_set_for_prefix(name, tmp, value);
                 found |= NVRAM_MODIFIED_SDN_BIT;
 #ifdef RTCONFIG_CFGSYNC
@@ -4444,7 +4454,9 @@ int validate_apply(webs_t wp, json_object *root)
 					if(strstr(name, "maclist") && check_cmd_injection_blacklist(value))
 						continue;
 					/* log wl with unit */
+#if !defined(RTAX56U)
 					nvram_modify_log(tmp, nvram_safe_get(tmp), value, activity_obj);
+#endif
 #if defined(RTCONFIG_AMAS_CENTRAL_CONTROL) && defined(RTCONFIG_AMAS_CAP_CONFIG)
 					if (is_cap_private_cfg(tmp) == 0)
 #endif
@@ -4892,11 +4904,15 @@ int validate_apply(webs_t wp, json_object *root)
 					dbg("validate %s=%s is illegal\n", name, value);
 					continue;
 				}
+#ifndef RTAX56U
 				if(!check_apply_nvram_lan_only(name))
 					continue;
+#endif /* RTAX56U retains its pre-3006 apply policy; no vendor hook is shipped */
 
 				/* log no prefix nvram */
+#if !defined(RTAX56U)
 				nvram_modify_log(name, nvram_safe_get(name), value, activity_obj);
+#endif
 
 #ifdef RTCONFIG_CFGSYNC
 				save_changed_param(cfg_root, name, value);
@@ -5263,7 +5279,9 @@ int validate_apply(webs_t wp, json_object *root)
 		httpd_nvram_commit();
 	}
 
+#if !defined(RTAX56U)
 	handle_nvram_modify_log(activity_obj);
+#endif
 
 	if(activity_obj)
 		json_object_put(activity_obj);
@@ -21847,6 +21865,7 @@ normal:
 }
 #endif
 
+#if !defined(RTAX56U)
 static void
 do_set_ASUS_NEW_EULA_cgi(char *url, FILE *stream)
 {
@@ -21867,6 +21886,7 @@ do_set_ASUS_NEW_EULA_cgi(char *url, FILE *stream)
 
 	websWrite(stream, "{\"statusCode\":\"%d\"}", ret);
 }
+#endif
 
 static void
 do_set_ASUS_EULA_cgi(char *url, FILE *stream)
@@ -25342,10 +25362,13 @@ do_get_DpiInfo_cgi(char *url, FILE *stream)
 		goto END;
 	}
 
-#if defined(RTCONFIG_BWDPI)
+#if defined(RTCONFIG_BWDPI) && !defined(RTAX56U)
 	bwdpi_cgi_mon_to_json(type, starttime, endtime, stream);
 #elif defined(RTCONFIG_HNS)
 	hns_cgi_mon_to_json(type, starttime, endtime, stream);
+#elif defined(RTAX56U)
+	websWrite(stream, "%s %d %s\r\n", PROTOCOL, 501, "Not Supported");
+	websWrite(stream, "[]");
 #endif
 
 END:
@@ -25365,10 +25388,13 @@ do_del_DpiInfo_cgi(char *url, FILE *stream)
 		goto END;
 	}
 
-#if defined(RTCONFIG_BWDPI)
+#if defined(RTCONFIG_BWDPI) && !defined(RTAX56U)
 	bwdpi_cgi_mon_del_db(type, stream);
 #elif defined(RTCONFIG_HNS)
 	hns_cgi_mon_del_db(type, stream);
+#elif defined(RTAX56U)
+	websWrite(stream, "%s %d %s\r\n", PROTOCOL, 501, "Not Supported");
+	websWrite(stream, "[]");
 #endif
 
 END:
@@ -29149,9 +29175,11 @@ struct mime_handler mime_handlers[] =
 	{ "upgrade.cgi*", "text/html", no_cache, do_upgrade_post, do_upgrade_cgi, do_auth},
 	{ "upload.cgi*", "text/html", no_cache, do_upload_post, do_upload_cgi, do_auth },
 	{ "set_ASUS_EULA.cgi*", "text/html", no_cache, do_html_post_and_get, do_set_ASUS_EULA_cgi, do_auth },
+#if !defined(RTAX56U)
 	{ "set_ASUS_NEW_EULA.cgi*", "text/html", no_cache, do_html_post_and_get, do_set_ASUS_NEW_EULA_cgi, do_auth },
 	{ "set_ASUS_privacy_policy.cgi*", "text/html", no_cache, do_html_post_and_get, do_set_ASUS_privacy_policy_cgi, do_auth },
 	{ "get_ASUS_privacy_policy.cgi*", "text/html", no_cache, do_html_post_and_get, do_get_ASUS_privacy_policy_cgi, do_auth },
+#endif
 	{ "set_TM_EULA.cgi*", "text/html", no_cache, do_html_post_and_get, do_set_TM_EULA_cgi, do_auth },
 	{ "set_app_mnt.cgi*", "text/html", no_cache, do_html_post_and_get, do_set_app_mnt_cgi, do_auth },
 	{ "get_app_mnt.cgi*", "text/html", no_cache, do_html_post_and_get, do_get_app_mnt_cgi, do_auth },
@@ -29446,7 +29474,7 @@ struct mime_handler mime_handlers[] =
 #ifdef RTCONFIG_SOFTWIRE46
 	{ "s46reset.cgi*", "text/html", no_cache, do_html_post_and_get, do_s46reset_cgi, do_auth },
 #endif
-#if defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)
+#if (defined(RTCONFIG_ASD) || defined(RTCONFIG_AHS)) && !defined(RTAX56U)
 	{ "set_security_update.cgi*", "text/html", no_cache, do_html_post_and_get, do_set_security_update_cgi, do_auth },
 	{ "get_security_update.cgi*", "text/html", no_cache, do_html_post_and_get, do_get_security_update_cgi, do_auth },
 #endif
@@ -42494,6 +42522,7 @@ int get_apg_wifi7_onoff(int sdn_idx)
 	FREE_MTLAN((void*)p_mtlan);
 	return ret;
 }
+#endif /* RTCONFIG_MULTILAN_CFG */
 
 #ifdef RTCONFIG_SCHED_V2
 #if defined(RTCONFIG_LED_SCHED) || defined(RTCONFIG_LED_NIGHT_SCHED) || defined(RTCONFIG_AURA_SCHED) || defined(RTCONFIG_AURA_NIGHT_SCHED)
@@ -42580,7 +42609,10 @@ static int ej_get_led_aura_next_sched(int eid, webs_t wp, int argc, char **argv)
 	return 0;
 }
 #endif
+#endif /* RTCONFIG_SCHED_V2 */
+#ifdef RTCONFIG_MULTILAN_CFG
 
+#ifdef RTCONFIG_SCHED_V2
 int get_apx_wifi_sched_on(int main_type, struct json_object *apg_sched_obj)
 {
 	int i = 0, activeNow = 0, expireNow = 0, apg_timesched_t = 0;
@@ -43388,8 +43420,14 @@ struct ej_handler ej_handlers[] = {
 	{ "cpu_core_num", ej_cpu_core_num},
 //	{ "cpu_info", ej_cpu_info},
 	{ "wps_info_2g", ej_wps_info_2g},
+#ifdef RTAX56U
+	{ "wps_info_5g", ej_wps_info},
+#else
 	{ "wps_info_5g", ej_wps_info_5g},
+#endif
+#ifdef RTCONFIG_HAS_5G_2
 	{ "wps_info_5g_2", ej_wps_info_5g_2},
+#endif
 #if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 	{ "wps_info_6g", ej_wps_info_6g},
 	{ "wps_info_6g_2", ej_wps_info_6g_2},
@@ -43566,7 +43604,9 @@ struct ej_handler ej_handlers[] = {
 	{ "chanspecs_5g", ej_wl_chanspecs_5g},
 	{ "chanspecs_5g_2", ej_wl_chanspecs_5g_2},
 	{ "chanspecs_6g", ej_wl_chanspecs_6g},
+#if defined(RTCONFIG_HAS_6G_2)
 	{ "chanspecs_6g_2", ej_wl_chanspecs_6g_2},
+#endif
 #endif
 #if defined(CONFIG_BCMWL5) || defined(RTCONFIG_REALTEK)
 	{ "wl_rssi_2g", ej_wl_rssi_2g},
@@ -43609,7 +43649,9 @@ struct ej_handler ej_handlers[] = {
 #endif	
 #endif
 	{ "nat_accel_status", ej_nat_accel_status },
+#ifndef RTAX56U
 	{ "hw_accel_status", ej_hw_accel_status },
+#endif
 	{ "get_wl_channel_list_2g", ej_get_wl_channel_list_2g },
 	{ "get_wl_channel_list_5g", ej_get_wl_channel_list_5g },
 	{ "get_wl_channel_list_5g_2", ej_get_wl_channel_list_5g_2 },
@@ -44916,7 +44958,9 @@ int create_sdn_profile(struct json_object *wgn_obj)
 		else  {
 			memset(b, 0, sizeof(b));
 		}
+#if !defined(RTAX56U)
 		nvram_modify_log(nv, nvram_safe_get(nv), b, activity_obj);
+#endif
 		nvram_set(nv, b);
 	}
 
@@ -44927,7 +44971,9 @@ int create_sdn_profile(struct json_object *wgn_obj)
 
 	httpd_nvram_commit();
 
+#if !defined(RTAX56U)
 	handle_nvram_modify_log(activity_obj);
+#endif
 
 	if(json_object_object_get_ex(wgn_obj, "do_rc", &do_rc))
 		strlcpy(do_rc_t, json_object_get_string(do_rc), sizeof(do_rc_t));
@@ -45167,7 +45213,9 @@ int create_sdn_mwl_profile(struct json_object *mwl_obj)
 			memset(b, 0, sizeof(b));
 		}
 
+#if !defined(RTAX56U)
 		nvram_modify_log(nv, nvram_safe_get(nv), b, activity_obj);
+#endif
 
 		nvram_set(nv, b);
 		//dbg("nvram_set %s = %s\n", nv, b);
@@ -45178,7 +45226,9 @@ int create_sdn_mwl_profile(struct json_object *mwl_obj)
 
 	sync_apgx_to_wlunit(NULL);
 
+#if !defined(RTAX56U)
 	handle_nvram_modify_log(activity_obj);
+#endif
 
 	httpd_nvram_commit();
 
@@ -45448,7 +45498,9 @@ int create_sdn_guest_profile(struct json_object *wl_obj)
 		else  {
 			memset(b, 0, sizeof(b));
 		}
+#if !defined(RTAX56U)
 		nvram_modify_log(nv, nvram_safe_get(nv), b, activity_obj);
+#endif
 		nvram_set(nv, b);
 		//dbg("nvram_set %s = %s\n", nv, b);
 	}
@@ -45458,7 +45510,9 @@ int create_sdn_guest_profile(struct json_object *wl_obj)
 
 	sync_apgx_to_wlunit(NULL);
 
+#if !defined(RTAX56U)
 	handle_nvram_modify_log(activity_obj);
+#endif
 
 	httpd_nvram_commit();
 

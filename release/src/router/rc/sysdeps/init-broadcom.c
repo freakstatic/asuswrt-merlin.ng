@@ -8277,7 +8277,13 @@ reset_mssid_hwaddr(int unit)
 	int idx, subunit;
 #ifndef RTCONFIG_MSSID_REALMAC
 	int max_mssid = (num_of_mssid_support(unit) > 3) ? 3 : num_of_mssid_support(unit);
+#ifdef RTAX56U
+	int max_wl_cap_mbss = wl_max_no_vifs(unit);
+	if (max_wl_cap_mbss <= 0)
+		max_wl_cap_mbss = 16;
+#else
 	int max_wl_cap_mbss = wl_cap_mbss(unit);
+#endif
 #else
 	int max_mssid = num_of_mssid_support(unit);
 #endif
@@ -9613,7 +9619,7 @@ void init_syspara(void)
 		nvram_set("wps_device_pin", wps_gen_pin(devPwd, sizeof(devPwd)) ? devPwd : "12345670");
 	} else
 		nvram_set("wps_device_pin", value);
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_AMAS) && !defined(RTAX56U)
 	int ret = 0;
 
 	ret = chk_acscli2_cmds("acs_restart");

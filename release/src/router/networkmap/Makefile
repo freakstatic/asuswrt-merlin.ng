@@ -250,8 +250,10 @@ endif
 	cp -f db/nmp_conv_type.js $(INSTALLDIR)/usr/networkmap/nmp_conv_type.js
 	cp -f db/nmp_vendor_type.js $(INSTALLDIR)/usr/networkmap/nmp_vendor_type.js
 	cp -f db/nmp_bwdpi_type.js $(INSTALLDIR)/usr/networkmap/nmp_bwdpi_type.js
+ifeq ($(RTCONFIG_MLO),y)
 	install -D api/$(NMP_API_SO) $(INSTALLDIR)/usr/lib/$(NMP_API_SO)
 	$(STRIP) $(INSTALLDIR)/usr/lib/*.so
+endif
 
 clean:
 ifneq ($(AC2900),y)

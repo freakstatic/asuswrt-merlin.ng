@@ -5541,12 +5541,23 @@ systemVariable.eulaRetryCount = 0;
 
 goTo.EULA = function(){
 
-	if(navigator.userAgent.match(/ASUSMultiSiteManager/) || navigator.userAgent.match(/ASUSExpertSiteManager/)){
+	if(!httpApi.legacyAsusConsent.supported() && (navigator.userAgent.match(/ASUSMultiSiteManager/) || navigator.userAgent.match(/ASUSExpertSiteManager/))){
 		apply.Policy();
 		return
 	}
 	PolicyStatus()
 		.then(data => {
+			if (data.legacy) {
+				if (policyConsentRequired(data)) {
+					const policy_page = document.querySelector('#policy_page');
+					const qisPolicyPageComponent = new QisPolicyPageComponent({policy: "EULA", policyStatus: data}).render();
+					policy_page.innerHTML = '';
+					policy_page.append(qisPolicyPageComponent);
+				} else {
+					goTo.Welcome();
+				}
+				return;
+			}
 			if (data.EULA_read == 1) {
 				goTo.PP();
 			} else {
@@ -5563,13 +5574,18 @@ goTo.EULA = function(){
 
 
 goTo.PP = function () {
-	if(navigator.userAgent.match(/ASUSMultiSiteManager/) || navigator.userAgent.match(/ASUSExpertSiteManager/)){
+	if(!httpApi.legacyAsusConsent.supported() && (navigator.userAgent.match(/ASUSMultiSiteManager/) || navigator.userAgent.match(/ASUSExpertSiteManager/))){
 		apply.Policy();
 		return
 	}
 
 	PolicyStatus()
 		.then(data => {
+			if (data.legacy) {
+				if (policyConsentRequired(data)) goTo.EULA();
+				else goTo.Welcome();
+				return;
+			}
 			const policy_page = document.querySelector('#policy_page');
 			const qisPolicyPageComponent = new QisPolicyPageComponent({
 				policy: "PP",
@@ -6318,6 +6334,10 @@ abort.ConfirmChangeWAN = function(){
 }
 
 apply.Policy = function (){
+	if (httpApi.legacyAsusConsent.supported()) {
+		goTo.EULA();
+		return;
+	}
 	httpApi.newEula.set("1", () => {
 		httpApi.privateEula.set(1, () => {
 			goTo.Welcome();

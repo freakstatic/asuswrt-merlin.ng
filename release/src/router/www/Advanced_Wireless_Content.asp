@@ -204,7 +204,7 @@
                         afc_enable,
                         function () {
                             const policyStatus = PolicyStatus().then((data) => {
-                                if (data.PP <= 2 || data.PP_read === 0) {
+                                if (data.legacy ? policyConsentRequired(data) : data.PP <= 2 || data.PP_read === 0) {
                                     const policyModal = new PolicyModalComponent({
                                         policy: "PP",
                                         policyStatus: data,

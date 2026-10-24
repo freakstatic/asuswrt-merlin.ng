@@ -220,10 +220,10 @@
 					systemVariable.maxPasswordLen = getSupportNum("MaxLen_http_passwd");
 					systemVariable.originWansMode = initNvram.wans_mode;
 					systemVariable.keepDefpsk = isSupport("defpsk");
-					systemVariable.eulaStatus = initNvram.ASUS_NEW_EULA;
-					httpApi.privateEula.get().then(data=>{
-						systemVariable.ppStatus = data
-					});
+					 systemVariable.eulaStatus = httpApi.legacyAsusConsent.supported() ? httpApi.legacyAsusConsent.get().ASUS_EULA : initNvram.ASUS_NEW_EULA;
+					 if (!httpApi.legacyAsusConsent.supported()) httpApi.privateEula.get().then(data=>{
+						 systemVariable.ppStatus = data
+					 });
 					systemVariable.macClone = false;
 
 					httpApi.log("tcode", systemVariable.territoryCode, systemVariable.qisSession)
@@ -296,9 +296,9 @@
 
                     PolicyStatus()
                         .then(data => {
-                            if (data.EULA_read === 0 && data.EULA_force_sign === 1) {
+                            if (data.legacy ? policyConsentRequired(data) : data.EULA_read === 0 && data.EULA_force_sign === 1) {
                                 goTo.EULA();
-                            } else if (data.EULA_read === 1 && data.PP_read === 0 && (data.PP === "" || (data.PP >= 0 && data.PP_force_sign === 1))) {
+                            } else if (!data.legacy && data.EULA_read === 1 && data.PP_read === 0 && (data.PP === "" || (data.PP >= 0 && data.PP_force_sign === 1))) {
                                 goTo.PP();
                             } else {
                                 switch (urlParameter.get("flag") || "") {

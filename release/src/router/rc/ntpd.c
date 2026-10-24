@@ -96,9 +96,11 @@ int ntpd_synced_main(int argc, char *argv[])
 		nvram_set("ntp_ready", "1");
 		logmessage("ntpd", "Initial clock set");
 /* Code from ntpclient */
-		now = time( (time_t*) 0 );
-		nvram_set_int("ntp_diff_ts", now-bf_time);
-		update_ntp_ts(bf_time, now-bf_time);
+			now = time( (time_t*) 0 );
+			nvram_set_int("ntp_diff_ts", now-bf_time);
+#ifndef RTAX56U
+			update_ntp_ts(bf_time, now-bf_time);
+#endif
 #ifdef RTCONFIG_CFGSYNC
 		if (pidof("cfg_server") >= 0)
 			kill_pidfile_s("/var/run/cfg_server.pid", SIGUSR1);

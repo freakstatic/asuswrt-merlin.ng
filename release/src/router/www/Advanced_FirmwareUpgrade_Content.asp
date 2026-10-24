@@ -2223,7 +2223,7 @@ function get_mobile_fw_upgrade_status(){
 								function () {
 									PolicyStatus()
                                         .then(data => {
-                                            if (data.PP < 1) {
+                                            if (policyConsentRequired(data)) {
                                                 const policyModal = new PolicyModalComponent({
                                                     policy: "PP",
                                                     policyStatus: data,
@@ -2269,7 +2269,7 @@ function get_mobile_fw_upgrade_status(){
 			</tr>
 		</table>
 
-		<table id="secur_stab_setting" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
+		<table id="secur_stab_setting" style="display:none;" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 			<thead>
 			<tr>
 				<td colspan="2"><#Secur_Stab_auto_upgrade#></td>
@@ -2280,12 +2280,14 @@ function get_mobile_fw_upgrade_status(){
 				<td>
 					<div align="center" class="left" style="width:75px; float:left; cursor:pointer;" id="switch_security_update_enable"></div>
 					<script type="text/javascript">
+						if (!httpApi.legacyAsusConsent.supported()) {
+						$('#secur_stab_setting').show();
 						$('#switch_security_update_enable').iphoneSwitch(httpApi.securityUpdate.get(),
 								function () {
 									//on
 									PolicyStatus()
                                         .then(data => {
-                                            if (data.PP < 1) {
+                                            if (policyConsentRequired(data)) {
                                                 const policyModal = new PolicyModalComponent({
                                                     policy: "PP",
                                                     policyStatus: data,
@@ -2309,6 +2311,7 @@ function get_mobile_fw_upgrade_status(){
 									httpApi.securityUpdate.set(0);
 								}
 						);
+						}
 					</script>
 				</td>	
 			</tr>

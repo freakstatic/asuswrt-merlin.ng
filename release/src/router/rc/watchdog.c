@@ -9984,7 +9984,9 @@ void onboarding_check()
 		lock = file_lock("onboarding");
 		if (strlen(nvram_safe_get("cfg_group")) == 0) {
 			stop_cfgsync();
+#ifndef RTAX56U
 			backup_eth_ob_log();
+#endif
 			notify_rc("resetdefault");
 		}
 		file_unlock(lock);
@@ -11713,7 +11715,9 @@ void watchdog(int sig)
 		mem_chk = (mem_chk + 1) % mem_chk_period ;
 		if (!mem_chk) {
 #ifdef HND_ROUTER
+#if !defined(RTAX56U)
 			memleakdbg();
+#endif
 #endif
 		}
 	}

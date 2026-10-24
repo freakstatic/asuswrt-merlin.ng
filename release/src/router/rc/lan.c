@@ -7025,7 +7025,7 @@ void restart_wireless(void)
 #ifdef RTCONFIG_NEW_USER_LOW_RSSI
 	start_roamast();
 #endif
-#ifdef RTCONFIG_CONNDIAG
+#if defined(RTCONFIG_CONNDIAG) && !defined(RTAX56U)
 	send_reinit_bssinfo_to_conn_diag();
 #endif
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7629) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_MT798X)

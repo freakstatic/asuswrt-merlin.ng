@@ -24257,8 +24257,10 @@ int init_nvram2(void)
 #endif
 #ifdef RTCONFIG_AMAS
 	char amas_rc_count[16] = {0};
+#ifndef RTAX56U
 	char wifi_gen[16] = {0};
 	unsigned int wifi_gen_val = 0;
+#endif
 #endif /* AMAS */
 
 	if (nvram_match("x_Setting", "0")) {
@@ -24434,12 +24436,14 @@ int init_nvram2(void)
 		amas_set_misc_info(MISC_INFO_COBRAND, nvram_safe_get("CoBrand"));
 	}
 	amas_set_misc_info(MISC_INFO_RCSUPPORT, get_rcSupport_count(amas_rc_count, sizeof(amas_rc_count)));
+#ifndef RTAX56U
 	/* set wifi generation in misc info */
 	wifi_gen_val = get_wifi_gen();
 	if (wifi_gen_val != 0) {
 		snprintf(wifi_gen, sizeof(wifi_gen), "%u", wifi_gen_val);
 		amas_set_misc_info(MISC_INFO_WIFI_GEN, wifi_gen);
 	}
+#endif /* !RTAX56U */
 #endif /* AMAS */
 #endif /* CFGSYNC */
 #ifdef RTCONFIG_AMAS
@@ -24621,15 +24625,21 @@ int init_nvram2(void)
 #endif
 
 	/* 2024/12/25 stop asuscomm.cn service. reset values of ddns_enable_x and ddns_hostname_x if WWW.ASUS.COM.CN is used. */
-	if(!strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM.CN") || ( noasusddns() && !strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM"))){
+	if(!strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM.CN")
+#if !defined(RTAX56U)
+		|| (noasusddns() && !strcmp(nvram_safe_get("ddns_server_x"), "WWW.ASUS.COM"))
+#endif
+	){
 		nvram_set("ddns_enable_x", "0");
 		nvram_set("ddns_hostname_x", "");
 		nvram_set("ddns_server_x", "");
 		nvram_commit();
 	}
 
+#if !defined(RTAX56U)
 	detect_vul_scan();
 	init_asus_pp_eula();
+#endif
 
 	if (!is_valid_ipv4(nvram_safe_get("lan_ipaddr"))) {
 		nvram_set("lan_ipaddr", nvram_default_get("lan_ipaddr"));
@@ -27147,7 +27157,9 @@ logmessage("ATE", "boot/continue fail= %d/%d\n", nvram_get_int("Ate_boot_fail"),
 			}
 
 #ifdef RTCONFIG_AMAS
+#if !defined(RTAX56U)
 			check_wlx_nband_type();
+#endif
 #endif
 #ifdef RTCONFIG_MLO
 			check_mlo_config();

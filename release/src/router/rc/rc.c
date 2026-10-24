@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <limits.h>
+#include <errno.h>
 #include <sys/un.h>
 
 #ifdef RTCONFIG_MXL_826XX
@@ -81,6 +82,21 @@
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
 #endif /* ARRAYSIZE */
 
+#if defined(RTAX56U) && defined(RTCONFIG_CFGSYNC)
+/* No compatible mesh firmware-check implementation exists in the AX56U blob. */
+int firmware_webs_update_main(int argc, char *argv[])
+{
+	(void)argc;
+	(void)argv;
+	fprintf(stderr, "firmware_webs_update: unsupported on this RT-AX56U build\n");
+	logmessage("firmware", "Mesh firmware update check is unsupported on RT-AX56U; use manual firmware upload");
+	nvram_set("webs_state_flag", "0");
+	nvram_set("webs_state_error", "1");
+	nvram_set("webs_state_update", "1");
+	return ENOTSUP;
+}
+#endif
+
 #if defined(RTCONFIG_HW_DOG)
 int hwdog_main(int, char **);
 #endif
@@ -112,6 +128,7 @@ double get_wifi_maxpower(int target_unit);
 extern int codb_test();
 #endif
 
+#if !defined(RTAX56U)
 int getPid_fromFile(char *file_name)
 {
 	FILE *fp;
@@ -128,6 +145,7 @@ int getPid_fromFile(char *file_name)
 
 	return result;
 }
+#endif
 
 // led_str_ctrl
 enum led_id get_led_id(const char *led_str)
@@ -1121,7 +1139,7 @@ static int rctest_main(int argc, char *argv[])
 		fflush(stdout);
 	}
 #endif
-#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BCMWL6)
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_BCMWL6) && !defined(RTAX56U)
 	else if (strcmp(argv[1], "chk_acsc")==0) {
 		int ret = 0;
 
@@ -1581,6 +1599,7 @@ static int rctest_main(int argc, char *argv[])
 		extern int amas_cd_ipc_send_event(const char *ipc_path, char *data);
 		amas_cd_ipc_send_event(CONNDIAG_IPC_SOCKET_PATH,value);
 	}
+#ifndef RTAX56U
 	else if (strcmp(argv[1], "diag_reinit_bssinfo")==0) {
 		send_reinit_bssinfo_to_conn_diag();
 	}
@@ -1597,6 +1616,7 @@ static int rctest_main(int argc, char *argv[])
 		int active = is_sta_active(argv[2], argv[3]);
 		fprintf(stderr, "active=%d\n", active);
 	}
+#endif /* !RTAX56U: these diagnostic hooks are absent from its private object */
 #endif
 #if defined(RTCONFIG_TRUSTZONE)
 	else if (strcmp(argv[1], "atee")==0) {
@@ -2310,7 +2330,7 @@ static int rctest_main(int argc, char *argv[])
 			memleakdbg();
 		}
 #endif
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) && !defined(RTAX56U)
 		else if (strcmp(argv[1], "check_wlx_nband_type") == 0) {
 			check_wlx_nband_type();
 		}

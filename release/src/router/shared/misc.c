@@ -5860,11 +5860,13 @@ int check_re_in_macfilter(int unit, char *mac)
 	char *nv, *nvp, *b;
 	int exist = 0;
 
+#ifdef RTCONFIG_MULTILAN_CFG
 	if (get_fh_if_prefix_by_unit(unit, prefix, sizeof(prefix))) {
 		trim_space(prefix);
 		strncat(prefix, "_", 1);
 	}
 	else
+#endif
 	{
 #ifdef RTCONFIG_AMAS
 		if (nvram_get_int("re_mode") == 1)

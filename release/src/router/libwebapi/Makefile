@@ -59,7 +59,9 @@ CFLAGS += -I$(TOP)/shared/sysdeps/amas
 CFLAGS += -I$(TOP)/cfg_mnt
 CFLAGS += -I$(TOP)/networkmap/api
 LIBS += -L$(TOP)/cfg_mnt -lcfgmnt
+ifeq ($(RTCONFIG_MLO),y)
 LIBS += -L$(TOP)/networkmap/api/ -lnmpapi
+endif
 endif
 
 ifeq ($(RTCONFIG_TRUSTZONE), y)
@@ -122,4 +124,3 @@ libwebapi.so: $(OBJS)
 clean:
 	@echo LINUXDIR=$(LINUXDIR)
 	rm -rf libwebapi.so *.o
-

@@ -5884,7 +5884,16 @@ struct ASUS_PP_table {
 extern struct ASUS_PP_table ASUS_PP_t[];
 
 extern int webapi_get_b(const int id, char *buf, size_t len);
+#if defined(RTAX56U)
+/* No PPv2 feature-state API exists in the retained AX56U private objects. */
+static inline int get_ASUS_privacy_policy_state(const int id)
+{
+	(void)id;
+	return 0;
+}
+#else
 extern int get_ASUS_privacy_policy_state(const int id);
+#endif
 extern int get_ASUS_privacy_policy(void);
 extern int get_ASUS_privacy_policy_ver(const int id);
 extern void init_asus_pp_eula(void);

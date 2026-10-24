@@ -1070,8 +1070,56 @@ var httpApi ={
         }
     },
 
+	// AX56U retains the older ASUS_EULA CGI and consent state, not PPv2.
+	"legacyAsusConsent": {
+		"supported": function(){
+			return httpApi.nvramGet(["productid"]).productid === "RT-AX56U";
+		},
+		"get": function(){
+			asyncData.clear(["ASUS_EULA", "ASUS_EULA_time"]);
+			return httpApi.nvramGet(["ASUS_EULA", "ASUS_EULA_time"], true);
+		},
+		"withdraw": function(callback, error){
+			if (!httpApi.legacyAsusConsent.supported()) { if (error) error(); return; }
+			if (httpApi.nvramGet(["link_internet"], true).link_internet !== "2") {
+				if (error) error();
+				return;
+			}
+			var retries = 0;
+			var poll = function(){
+				asyncData.clear(["asusddns_reg_result"]);
+				var result = httpApi.nvramGet(["asusddns_reg_result"], true).asusddns_reg_result || "";
+				var completed = result.indexOf("unregister,") === 0 && result.slice(11) !== "";
+				if (!completed && retries++ < 6) { setTimeout(poll, 500); return; }
+				httpApi.legacyAsusConsent.set("0", function(state){
+					if (callback) callback(state, result !== "unregister,200");
+				}, error);
+			};
+			$.ajax({url: '/unreg_ASUSDDNS.cgi', timeout: 10000, success: poll, error: error});
+		},
+		"set": function(enable, callback, error){
+			if (!httpApi.legacyAsusConsent.supported() || !/^[01]$/.test(String(enable))) {
+				if (error) error();
+				return;
+			}
+			$.ajax({
+				url: '/set_ASUS_EULA.cgi',
+				data: { ASUS_EULA: String(enable) },
+				timeout: 10000,
+				error: error,
+				success: function(){
+					var state = httpApi.legacyAsusConsent.get();
+					if (!state.isError && state.ASUS_EULA === String(enable)) {
+						if (callback) callback(state);
+					} else if (error) error();
+				}
+			});
+		}
+	},
+
 	"newEula": {
 		"set": (enable, callback) => {
+			if (httpApi.legacyAsusConsent.supported()) return false;
 			$.ajax({
 				url: '/set_ASUS_NEW_EULA.cgi',
 				data: {
@@ -1085,6 +1133,7 @@ var httpApi ={
 			});
 		},
 		"get": () => {
+			if (httpApi.legacyAsusConsent.supported()) return Promise.reject(new Error("PPv2 is unsupported"));
 			return new Promise((resolve, reject) => {
 				const res = httpApi.nvramGet(["ASUS_NEW_EULA", "ASUS_NEW_EULA_time"], true)
 				resolve(res);
@@ -1094,6 +1143,7 @@ var httpApi ={
 
 	"privateEula": {
 		"set": function(enable, callback){
+			if (httpApi.legacyAsusConsent.supported()) return false;
 			$.ajax({
 				url: '/set_ASUS_privacy_policy.cgi',
 				data: {
@@ -1109,6 +1159,7 @@ var httpApi ={
 		},
 
         "get": function () {
+			if (httpApi.legacyAsusConsent.supported()) return Promise.reject(new Error("PPv2 is unsupported"));
             return fetch('/get_ASUS_privacy_policy.cgi')
                 .then(response => response.json())
                 .then(resp => {
@@ -1142,6 +1193,7 @@ var httpApi ={
 
 	"securityUpdate": {
 		"set": function(enable, callback){
+			if (httpApi.legacyAsusConsent.supported()) return false;
 			$.ajax({
 				url: '/set_security_update.cgi?' + 'security_update=' + enable,
 				async: false,
@@ -1153,6 +1205,7 @@ var httpApi ={
 		},
 
 		"get": function(){
+			if (httpApi.legacyAsusConsent.supported()) return undefined;
 			var retData;
 			$.ajax({
 				url: '/get_security_update.cgi',

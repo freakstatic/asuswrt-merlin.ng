@@ -279,7 +279,7 @@ function init(){
 	if (ddns_enable_x == "1" && ddns_server_x.indexOf("WWW.ASUS.COM") != -1) {
         PolicyStatus()
             .then(data => {
-                if (data.PP < 1) {
+                if (policyConsentRequired(data)) {
                     const policyModal = new PolicyModalComponent({
                         policy: "PP",
                         policyStatus: data,
@@ -545,7 +545,7 @@ function apply_eula_check(){
     PolicyStatus()
         .then(data => {
             if (document.form.ddns_enable_x.value == "1" && document.form.ddns_server_x.value.indexOf("WWW.ASUS.COM") != -1) {
-                if (data.PP < 1) {
+                if (policyConsentRequired(data)) {
                     const policyModal = new PolicyModalComponent({
                         policy: "PP",
                         policyStatus: data,

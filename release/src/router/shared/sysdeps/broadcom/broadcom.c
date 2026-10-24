@@ -1915,7 +1915,10 @@ get_uplinkports_linkrate(char *ifname)
 		sprintf(ex_pif[i], "%s", "X");
 	}
 #endif
-	int ext_lret=0, model, mask;
+	int ext_lret=0, mask;
+#if !defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(BCM6855) && !defined(BCM6750)
+	int model;
+#endif
 	int extra_p0=0;
 
 	for (i=0, j=0; i < port_mapping.count; i++) {
@@ -1928,6 +1931,7 @@ get_uplinkports_linkrate(char *ifname)
 		}
 	}
 
+#if !defined(RTCONFIG_HND_ROUTER_AX_675X) && !defined(BCM6855) && !defined(BCM6750)
 	model = get_model();
 	switch(model) {
 	case MODEL_GTAC5300:
@@ -1959,7 +1963,9 @@ get_uplinkports_linkrate(char *ifname)
                 }
                 break;
 	default:
+		break;
 	}
+#endif
 
 	memset(out_buf, 0, 64);
 	len = 0;
@@ -2148,11 +2154,13 @@ void update_macfilter_relist()
 		foreach (word, wl_ifnames, next) {
 			SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
 
+#ifdef RTCONFIG_MULTILAN_CFG
 			if (get_fh_if_prefix_by_unit(unit, prefix, sizeof(prefix))) {
 				trim_space(prefix);
 				strncat(prefix, "_", 1);
 			}
 			else
+#endif
 			{
 #ifdef RTCONFIG_AMAS
 				if (nvram_get_int("re_mode") == 1)
@@ -3543,4 +3551,3 @@ int get_wan0_ifname_phymap(char *out_ifname, size_t out_len)
 	return 0;
 }
 #endif
-

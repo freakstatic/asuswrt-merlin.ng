@@ -5300,6 +5300,9 @@ function showWlHintContainer(_parm){
 }
 
 function checkPolicy() {
+	// Legacy ASUS consent is optional for local administration and requested
+	// only when a service entry point needs it.
+	if (httpApi.legacyAsusConsent.supported()) return;
 	var arkMigrationPromise;
 	if (isSupport("gtbooster") >= 2) {
 		arkMigrationPromise = fetch('/get_ark_migration_done.cgi')

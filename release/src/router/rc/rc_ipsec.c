@@ -10,6 +10,9 @@
 #include <network_utility.h>
 #include "rc_ipsec.h"
 #include <webapi.h>
+#ifdef RTAX56U
+#include <ax56u_compat_validation.h>
+#endif
 
 /* for struct utsname */
 #include <sys/utsname.h>
@@ -1175,6 +1178,10 @@ void rc_ipsec_gen_cert(int skip_checking)
     char device_cn[64] = {0};
     char ddns_name[128] = {0}, remote_id[128] = {0}, prefix[16] = {0};
     int ca_lifetime = 2200;
+#ifdef RTAX56U
+    const char *value;
+    unsigned int lifetime;
+#endif
 
     if((skip_checking == 0) && check_if_file_exist(FILE_PATH_CA_ETC FILE_NAME_CERT_PEM)&&check_if_file_exist(FILE_PATH_CA_ETC FILE_NAME_SVR_PRIVATE_KEY)&&check_if_file_exist(FILE_PATH_CA_ETC FILE_NAME_SVR_CERT_PEM)){
         DBG(("CA files are ready there.\n"));
@@ -1189,6 +1196,26 @@ void rc_ipsec_gen_cert(int skip_checking)
     }
 
     DBG(("Generate CA files.\n"));
+#ifdef RTAX56U
+    if (uname(&uts) != 0) return;
+    value = uts.nodename;
+    if (!*value) value = nvram_safe_get("odmpid");
+    if (!*value) value = nvram_safe_get("productid");
+    /* Validate the complete value before embedding it in a shell script. */
+    if (!ax56u_device_cn(value)) {
+        logmessage("ipsec", "Invalid device CN; certificate generation skipped.");
+        return;
+    }
+    snprintf(device_cn, sizeof(device_cn), "%s", value);
+    value = nvram_safe_get("ipsec_ca_lifetime");
+    if (*value) {
+        if (!ax56u_uint(value, 36500, &lifetime)) {
+            logmessage("ipsec", "Invalid CA lifetime; certificate generation skipped.");
+            return;
+        }
+        if (lifetime) ca_lifetime = (int)lifetime;
+    }
+#else
     uname(&uts);
     snprintf(device_cn, sizeof(device_cn), "%s", uts.nodename);
     if(strlen(device_cn) == 0){
@@ -1202,26 +1229,49 @@ void rc_ipsec_gen_cert(int skip_checking)
     if(nvram_get_int("ipsec_ca_lifetime") > 0){
         ca_lifetime = nvram_get_int("ipsec_ca_lifetime");
     }
+#endif
 
     if(nvram_match("ddns_enable_x", "1"))
     {
+#ifdef RTAX56U
+        value = nvram_safe_get("ddns_hostname_x");
+        if (*value && (strlen(value) >= sizeof(ddns_name) || !ax56u_dns_name(value))) {
+            logmessage("ipsec", "Invalid DDNS identifier; certificate generation skipped.");
+            return;
+        }
+        snprintf(ddns_name, sizeof(ddns_name), "%s", value);
+#else
         const char *s = nvram_safe_get("ddns_hostname_x");
         if (is_valid_domainname(s))
             snprintf(ddns_name, sizeof(ddns_name), "%s", s);
+#endif
     }
 
     if(strlen(ddns_name) == 0 )
     {
         snprintf(prefix, sizeof(prefix), "wan%d_ipaddr", get_active_wan_unit());
+#ifdef RTAX56U
+        value = nvram_safe_get(prefix);
+        if (!ax56u_ipv4(value)) {
+            logmessage("ipsec", "Invalid WAN IPv4 identifier; certificate generation skipped.");
+            return;
+        }
+        snprintf(remote_id, sizeof(remote_id), "%s", value);
+#else
         snprintf(remote_id, sizeof(remote_id), "%s", nvram_safe_get(prefix));
         if(strlen(remote_id) == 0 || !validate_apply_input_value(remote_id, prefix)){
             DBG(("[Error]wan ip is not set yet, no any CAs will be created.\n"));
             return;
         }
+#endif
     }else
         strlcpy(remote_id, ddns_name, sizeof(remote_id));
 
     fp = fopen(FILE_PATH_CA_ETC"generate.sh", "w");
+#ifdef RTAX56U
+    /* Never execute a stale script if writing a fresh one fails. */
+    if (fp == NULL) return;
+#endif
     if(NULL != fp){
         fprintf(fp, "#!/bin/sh\n\n");
         fprintf(fp, "pki --gen --size 2048 --outform pem > %s%s\n"
@@ -1235,9 +1285,17 @@ void rc_ipsec_gen_cert(int skip_checking)
                     FILE_PATH_CA_ETC, FILE_NAME_SVR_PRIVATE_KEY, FILE_PATH_CA_ETC, FILE_NAME_CERT_PEM, FILE_PATH_CA_ETC, FILE_NAME_CA_PRIVATE_KEY, remote_id, remote_id, ca_lifetime, FILE_PATH_CA_ETC, FILE_NAME_SVR_CERT_PEM,
                     FILE_PATH_CA_ETC, FILE_NAME_CERT_PEM, FILE_PATH_CA_ETC, FILE_NAME_CERT_DER
                     );
+#ifdef RTAX56U
+        if (fclose(fp) != 0) return;
+#else
         fclose(fp);
+#endif
     }
+#ifdef RTAX56U
+    if (chmod(FILE_PATH_CA_ETC"generate.sh", 0700) != 0) return;
+#else
     chmod(FILE_PATH_CA_ETC"generate.sh", 0777);
+#endif
     system(FILE_PATH_CA_ETC"generate.sh");
     /* 0:nvram 1:openvpn 2:ipsec 3:usericon */
     sync_profile_update_time(2);

@@ -30,7 +30,9 @@ endif
 
 ifeq ($(RTCONFIG_CFGSYNC),y)
 ROUTER_LIBS += -lcfgmnt
+ifeq ($(RTCONFIG_MLO),y)
 ROUTER_LIBS += -lnmpapi
+endif
 
 ROUTER_LDFLAGS += -L$(CFGMNT_DIR)
 ROUTER_LDFLAGS += -L$(TOP)/networkmap/api/

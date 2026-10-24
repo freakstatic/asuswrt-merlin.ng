@@ -753,7 +753,7 @@ sta_list:
 #ifdef RTCONFIG_MULTILAN_CFG
 					ret += websWrite(wp, "\"%d\"],", guestvlan);
 #else
-					ret += webswrite(wp, "\"\"],");
+					ret += websWrite(wp, "\"\"],");
 #endif
 				}
 			}

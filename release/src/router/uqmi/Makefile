@@ -3,7 +3,9 @@ SBINDIR  = $(PREFIX)/sbin
 DESTDIR  = 
 CFLAGS   = -Os -ggdb -Wall -Werror --std=gnu99 -Wmissing-declarations $(EXTRACFLAGS) # -Wno-enum-conversion 
 CFLAGS  += -ffunction-sections -fdata-sections
+ifneq ($(strip $(ASUSWRT_BRCM_SDK_VERSION)),)
 CFLAGS  += -D$(ASUSWRT_BRCM_SDK_VERSION)
+endif
 LDFLAGS  = $(EXTRALDFLAGS)
 LDFLAGS += -Wl,--gc-sections
 
@@ -15,7 +17,7 @@ ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG -g3
 endif
 
-CFLAGS += -I$(LIBUBOX)
+CFLAGS += -I$(LIBUBOX) -I$(LIBUBOX)/..
 LIBS += -L$(LIBUBOX) -lubox -lblobmsg_json
 ifneq ($(JSON),)
 CFLAGS += -I$(JSON)

@@ -3049,9 +3049,26 @@ void start_s46_tunnel(int unit)
 	case WAN_DSLITE:
 		snprintf(ipaddr, sizeof(ipaddr), "%s", nvram_safe_get(ipv6_nvname_by_unit("ipv6_s46_b4addr", unit)));
 		snprintf(AFTR, sizeof(AFTR), "%s", nvram_safe_get(ipv6_nvname_by_unit("ipv6_s46_aftr_addr", unit)));
-		if (get_ipv6_service_by_unit(unit) == IPV6_NATIVE_DHCP)
+		if (get_ipv6_service_by_unit(unit) == IPV6_NATIVE_DHCP) {
+#ifdef RTAX56U
+			/* The source-owned helper uses the assigned router address or
+			 * derives prefix::1, just as add_ip6_lanaddr() does. Native
+			 * DHCPv6-PD does not require a separate SLAAC/RA address.
+			 */
+			const char *address = ipv6_router_address_by_unit(NULL, unit);
+			struct in6_addr addr6;
+
+			if (inet_pton(AF_INET6, address, &addr6) != 1 ||
+			    IN6_IS_ADDR_UNSPECIFIED(&addr6) || IN6_IS_ADDR_LOOPBACK(&addr6) ||
+			    IN6_IS_ADDR_LINKLOCAL(&addr6) || IN6_IS_ADDR_MULTICAST(&addr6)) {
+				logmessage("dslite", "No usable local IPv6 address; tunnel creation skipped.");
+				return;
+			}
+			snprintf(local, sizeof(local), "%s", address);
+#else
 			get_s46_prefix_host(nvram_safe_get(ipv6_nvname_by_unit("ipv6_prefix", unit)), local, sizeof(local));
-		else
+#endif
+		} else
 			snprintf(local, sizeof(local), "%s", nvram_safe_get(ipv6_nvname_by_unit("ipv6_ra_addr", unit)));
 		break;
 	default:
@@ -6292,8 +6309,10 @@ mcpd_conf(void)
 			proxy_ifname = "eth4.v0";
 		else if (model == MODEL_RTAX82_XD6S)
 			proxy_ifname = "eth1.v0";
+#ifdef RTCONFIG_MXL_826XX
 		else if (is_mxl_dual_serdes_war())
 			proxy_ifname = "eth0";
+#endif
 		else
 			proxy_ifname = "eth0.v0";
 #if defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTBE96) || defined(RTBE58U) || defined(TUFBE3600) || defined(RTBE58U_V2) || defined(TUFBE3600_V2) || defined(RTBE55) || defined(GTBE19000) || defined(RTBE92U) || defined(RTBE95U) || defined(RTBE82U) || defined(TUFBE82) || defined(RTBE58U_PRO) || defined(RTCONFIG_MXL_826XX)
@@ -23277,6 +23296,10 @@ void update_amas_lldpd_ifnames(void)
 #endif  // RTCONFIG_AMAS_WGN || RTCONFIG_MULTILAN_CFG
 
 	if (strlen(bind_ifnames) > 0) {
+#ifdef RTAX56U
+		/* The AX56U AMAS object predates the lldpd rebinding API. */
+		_dprintf("rc: lldpd binding refresh is unavailable on RT-AX56U (%s)\n", bind_ifnames);
+#else
 		if (amas_set_lldpd_bind_ifnames_retry(bind_ifnames,3)==AMAS_RESULT_SUCCESS) {
 #if defined(RTCONFIG_AMAS_WGN) || defined(RTCONFIG_MULTILAN_CFG)
         	f_write_string("/tmp/lldpd_bind_ifnames", bind_ifnames, 0, 0);
@@ -23287,6 +23310,7 @@ void update_amas_lldpd_ifnames(void)
 		else {
 			_dprintf("rc: ==> lldpd binding interface(%s) fail ...\n", bind_ifnames);
 		}	
+#endif
 	}
 
 	return;
@@ -23375,7 +23399,11 @@ void start_amas_lldpd(void)
 		if (strcmp(bind_ifnames, lldpd_bind_ifnames) == 0) {
 			_dprintf("rc: ==> binding interface match lldpd_bind_ifnames(%s)...\n", lldpd_bind_ifnames);
 			if (pids("lldpd")) {
+#ifdef RTAX56U
+				if (is_router_mode() || access_point_mode())
+#else
 				if (IS_CAP())
+#endif
 					update_amas_eth_role();
 				return;
 			}
@@ -26470,12 +26498,17 @@ void stop_fw_check(void)
 
 void start_firmware_webs_update(void)
 {
+#if defined(RTAX56U) && defined(RTCONFIG_CFGSYNC)
+	/* Report the same explicit unsupported result as the installed applet. */
+	firmware_webs_update_main(0, NULL);
+#else
 	char *cmd[] = {"/sbin/firmware_webs_update", NULL};
 	pid_t pid;
 
 	stop_firmware_webs_update();
 
 	_eval(cmd, NULL, 0, &pid);
+#endif
 }
 
 void stop_firmware_webs_update(void)

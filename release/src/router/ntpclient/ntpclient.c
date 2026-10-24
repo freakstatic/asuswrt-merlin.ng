@@ -543,7 +543,9 @@ int main(int argc, char *argv[]) {
 					nvram_set("ntp_ready", "1");
 					now = time( (time_t*) 0 );
 					nvram_set_int("ntp_diff_ts", now-bf_time);
+#ifndef RTAX56U
 					update_ntp_ts(bf_time, now-bf_time);
+#endif
 #if 0
 #if !defined(RPAC56) && !defined(MAPAC1300) && !defined(MAPAC2200) && !defined(VZWAC1300) && !defined(RTCONFIG_DSL) && !defined(RTAX89U)
 #ifndef RTCONFIG_BT_CONN
