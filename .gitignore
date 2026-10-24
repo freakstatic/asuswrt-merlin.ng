@@ -1,0 +1,32 @@
+# Local/private/generated products are not publication inputs. These patterns
+# do not remove or replace any vendor files already tracked by upstream.
+/artifacts/
+/toolchain-cache/
+/local-build/
+/.vscode/
+__pycache__/
+*.py[cod]
+.deps/
+.libs/
+autom4te.cache/
+*.log
+*.w
+*.w.sha256
+*.md5
+*.ubi
+*.ubifs
+*.img
+*.trx
+*.bin
+*.o
+*.lo
+*.a
+*.so
+*.so.*
+*.ko
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
