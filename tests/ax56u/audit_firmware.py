@@ -30,11 +30,71 @@ def readelf(path, *options):
     ).stdout
 
 
+def runtime_version(staging):
+    """Read exported version pointers without loading or executing libshared."""
+    path = staging / "usr/lib/libshared.so"
+    data = path.read_bytes()
+    require(data[:6] == b"\x7fELF\x01\x01", "Expected little-endian ELF32 libshared")
+    offset = struct.unpack_from("<I", data, 32)[0]
+    size, count = struct.unpack_from("<HH", data, 46)
+    require(size == 40 and offset + size * count <= len(data), "Invalid ELF section table")
+    sections = [struct.unpack_from("<10I", data, offset + index * size) for index in range(count)]
+
+    def read_address(address, length):
+        for section in sections:
+            if section[1] != 8 and section[3] <= address and address + length <= section[3] + section[5]:
+                start = section[4] + address - section[3]
+                require(start + length <= len(data), "ELF address outside file")
+                return data[start:start + length]
+        raise ValueError("Unmapped ELF version address")
+
+    symbols = readelf(path, "--dyn-syms", "-W")
+    values = {}
+    for name in ("rt_version", "rt_serialno", "rt_extendno", "rt_buildname"):
+        matches = re.findall(r"^\s*\d+:\s+([0-9a-f]+)\s+4\s+OBJECT\s+GLOBAL\s+DEFAULT\s+\S+\s+" + name + r"\s*$", symbols, re.M)
+        require(len(matches) == 1, "Missing or ambiguous runtime version symbol: " + name)
+        pointer = struct.unpack("<I", read_address(int(matches[0], 16), 4))[0]
+        value = bytearray()
+        for index in range(128):
+            byte = read_address(pointer + index, 1)
+            if byte == b"\0":
+                break
+            value.extend(byte)
+        else:
+            raise ValueError("Unterminated runtime version string")
+        values[name] = value.decode("ascii")
+    return values
+
+
+def asus_tag_audit(tag, runtime):
+    require(len(tag) == 64 and tag[63] == 1, "Invalid ASUS image tag layout")
+    require(re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", runtime["rt_version"]), "Invalid runtime firmware version")
+    require(re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", runtime["rt_serialno"]), "Invalid runtime build number")
+    version = tuple(int(part) for part in runtime["rt_version"].split("."))
+    build = int(runtime["rt_serialno"].split(".")[0])
+    extension_prefix = re.match(r"[0-9]+", runtime["rt_extendno"])
+    extension = int(extension_prefix[0]) if extension_prefix else 0
+    require(all(part <= 255 for part in version) and build <= 0xFFFF and extension <= 0xFFFFFFFF,
+            "Runtime version exceeds legacy ASUS tag fields")
+    require(runtime["rt_buildname"] == "RT-AX56U", "Wrong packaged router model")
+    expected_model = b"RT-AX56U".ljust(12, b"\0")
+    build_tag, extension16 = struct.unpack_from("<HH", tag, 4)
+    extension32 = struct.unpack_from("<I", tag, 28)[0]
+    require(tuple(tag[:4]) == version and build_tag == build and tag[8:20] == expected_model
+            and extension16 == (extension & 0xFFFF) and extension32 == extension,
+            "ASUS image tag does not match packaged runtime version (legacy numeric projection)")
+    return {"version": ".".join(map(str, version)), "buildno": build_tag,
+            "extendno16": extension16, "extendno32": extension32,
+            "productid": runtime["rt_buildname"], "packaged_runtime": runtime,
+            "encoding": "Legacy integer fields use decimal prefixes; nonnumeric extension maps to zero"}
+
+
 def image_audit(path, staging):
     raw = path.read_bytes()
     expected, version, chip, flash, flags = struct.unpack("<5I", raw[-20:])
     require(expected == crc32(raw[:-20]), "Whole-image CRC mismatch")
     require((version, chip, flash) == (0x5732, 0x47622, 3), "Wrong WFI target")
+    tag = asus_tag_audit(raw[-84:-20], runtime_version(staging))
     start = 0 if raw[:4] == b"UBI#" else 1024 * 1024
     payload = raw[start:-20]
     require(len(payload) % 131072 == 0, "UBI eraseblock alignment")
@@ -140,6 +200,7 @@ def image_audit(path, staging):
         "ubi_blocks": len(payload) // 131072, "volumes": volume_names,
         "ubifs_nodes": sum(counts.values()), "inodes": len(inodes),
         "verified_image_files": checked,
+        "asus_tag": tag,
     }
 
 

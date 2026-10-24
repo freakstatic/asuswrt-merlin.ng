@@ -4,6 +4,7 @@ Run from the project root (uses the host C compiler, not the router toolchain):
 
 ```sh
 python3 tests/ax56u/integration_checks.py
+python3 tests/ax56u/image_tag.test.py
 node tests/ax56u/ui_legacy_consent.test.js
 sh tests/ax56u/validation_run.sh
 VALIDATION_SANITIZE=1 sh tests/ax56u/validation_run.sh
@@ -92,6 +93,18 @@ router testing; these host tests perform none of those operations.
 whole-image CRC, UBI/UBIFS records, selected image files against staging,
 declared ELF library names and strong-symbol closure, and module symbol names
 and vermagic. It does not mount, execute, or flash firmware.
+It also reads version exports from the packaged `libshared.so` without loading
+that library, and checks the ASUS image tail against their legacy numeric
+projection. A stale vendor extension such as `24353` is rejected when the
+runtime extension is `2-ax56u1`.
+
+The image-tag tests require Python 3 and host `make`. They use synthetic
+NAND/WFI fixtures and a fake host vendor writer, not router executables.
+They cover both 3004 and 3006 version projections, the two 3004 image formats,
+both extension widths, CRC regeneration, preservation of non-tag bytes and
+CFEROM prefixes, malformed inputs, atomic output replacement, and AX56U-only
+make-rule selection. The real adapter retains the unchanged model-specific
+vendor host writer; no proprietary input is replaced.
 
 It requires Python 3 and host `readelf`. For example, from the repository root:
 

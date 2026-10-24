@@ -81,7 +81,13 @@ bcmImageBuilder: bcmImageBuilder.c
 version:
 	cp -f ../router/shared/version.h .
 	cp -f ../router/shared/rtconfig.h .
-ifneq ($(wildcard ./prebuilt/$(BUILD_NAME)/addvtoken),)
+ifeq ($(BUILD_NAME),RT-AX56U)
+# Retain vendor WFI packing but replace its stale compiled-in ASUS version.
+.PHONY: addvtoken version
+addvtoken: ax56u_addvtoken.py version
+	cp -f ax56u_addvtoken.py $@
+	chmod 755 $@
+else ifneq ($(wildcard ./prebuilt/$(BUILD_NAME)/addvtoken),)
 addvtoken:
 	@-cp -f ./prebuilt/$(BUILD_NAME)/addvtoken .
 else
@@ -326,4 +332,3 @@ $(HOSTTOOLS_DIR)/prelink/src/execstack:
 
 
 build_execstack: $(HOSTTOOLS_DIR)/prelink/src/execstack
-
